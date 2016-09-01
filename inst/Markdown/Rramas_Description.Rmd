@@ -1,0 +1,579 @@
+---
+title: "Rramas"
+author: "Aranka Steyaert"
+date: "19 August 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(Rramas)
+library(grDevices)
+library(devtools)
+```
+
+# Het Rramas pakket
+Het [Rramas](https://cran.r-project.org/web/packages/Rramas/index.html) pakket werd gemaakt door Marcelino de la Cruz en probeert de analyse van matrix-populatiemodellen door het programma RAMAS na te bootsen. 
+In de documentatie worden 4 functies voorgesteld, maar er zijn ook nog een aantal onderliggende functies in het pakket aanwezig.
+
+# De verschillende functies
+## CoryphanthaA
+Er is een mogelijkheid om 3 transitiematrices in te laden, gebaseerd op data uit Schmalzel et al. (1995). Deze 3 matrices zijn de transitiematrices van 3 verschillende populatiepatches behorende tot dezelfde metapopulatie.
+
+### Gebruik
+```{r Coryphantha}
+data("coryphanthaA")
+coryphanthaA
+data("coryphanthaB")
+coryphanthaB
+data("coryphanthaC")
+coryphanthaC
+```
+
+## as.tmatrix
+Deze functie zet normale matrices om in transitie matrices. Een door de auteur gedefinieerde structuur waarop een aantal functies kunnen worden toegepast.
+
+### Onderliggende code
+
+De functie zorgt er in principe voor dat je een matrix hebt, dat de rijen en kolommen de juiste naam hebben en dat de class `tmatrix` wordt toegekend zodat de commado's `summary` en `plot` de gewenste informatie geven.
+
+```{r as.tmatrix, eval=FALSE}
+function (x, names.st = NULL, ...) 
+{
+    x <- as.matrix(x, ...) 
+    if (diff(dim(x)) != 0) 
+        stop("only square matrices can be considered as a transition matrix.")
+    di <- dim(x)[[1]]
+    m.names <- dimnames(x)[[1]]
+    if (is.null(m.names)) 
+        m.names <- names.st
+    if (is.null(m.names)) 
+        m.names <- paste("stage.", 1:di, sep = "")
+    dimnames(x) <- list(m.names, m.names)
+    class(x) <- c("tmatrix", class(x))
+    return(x)
+}
+```
+
+### Functies
+1. `plot(x,...)`: x is een element van de klasse `tmatrix` 
+  + plot een stable stage distributie
+  + plot de reproductive value van elke stage
+  + plot een diagram corresponderend met de matrix
+  + plots kunnen blijkbaar niet ingevoegd worden in Markdown
+  + Staat beschreven in de documentatie als `plot.tmatrix`, maar dit is geen bestaand commando (`plot` doet echter wel gewoon wat `plot.tmatrix` zou moeten doen)
+2. `summary(x)`: x is een element van de klasse `tmatrix`
+  + print lambda, stable stage verdeling, reproductive values, sensitiviteiten en elasticiteiten
+
+### Gebruik
+```{r Tmatrix}
+cAt <- as.tmatrix(coryphanthaA)
+cAt
+summary(cAt)
+cBt <- as.tmatrix(coryphanthaB, names.st = c("seed","juvenile","adult"))
+cBt
+```
+```{r TmatrixPlot, dev="quartz_pdf"}
+plot(cBt) 
+# dit werkt dus blijkbaar niet in Markdown (geeft in R wel heel mooie figuren)
+```
+
+## projectn()
+
+Dit is de hoofdfunctie die de functionaliteit van Ramas zou moeten nabootsen.
+
+### Input
+* `v0` vector met de initiele populatiegroottes verdeeld over de verschillende stages
+* `mat` een object van de klasse `tmatrix`
+* `matsd` een matrix met de standaarddeviaties
+* `estamb` True or False. Indien True wordt er environmental stochasticity gebruikt
+* `estdem` True or False. Indien True wordt demographic stochasticity gebruikt
+* `equalsign` True or False. Moeten alle afwijkingen bij de environmental stochasticity hetzelfde teken en dezelfde grootteorde hebben (TRUE) of mag dit ook random zijn (FALSE)?
+* `stmat` Indien sommige matrixelementen zowel fecunditeit als survival voorstellen geeft dit het aandeel dat fecunditeit op die positie in het matrixelement heeft
+* `fecundity1` True or False. Indien True wordt elk element op de eerste rij als fecunditeit beschouwd, indien False wordt elk element $< 1$ als survivalrate beschouwd en alle elementen $\geqslant 1$ worden als fecunditeit beschouwd.
+* `nrep` Aantal replicaties binnen een tijdsstap
+* `time` Aantal tijdsstappen
+* `management` Vector met management acties die uitgevoerd zullen worden bij elke tijdsstap. Volgens de documentatie zou dit zowel een vector als een matrix mogen zijn, maar er zit een fout in de code, waardoor enkel vectoren mogelijk zijn. Deze vectoren moeten overigens hetzelfde aantal elementen hebben als er stages zijn, anders wordt in de loop van de code een matrix gecreeerd. Positieve waarden betekenen dat er dieren in de populatie worden toegevoegd, Negatieve waarden betekenen dat er dieren uit de populatie worden verwijderd. Waarden met absolute waarde $<1$ worden gezien als een proportie van de (huidige) populatie, waarden met absolute waarde $\geqslant 1$ worden gezien als een aantal individuen.
+* `round` True or False. Indien True worden alle projecties afgerond tot op decimale getallen na elke tijdsstap.
+
+### Onderliggende code
+
+Deze functie controleert eerst of de inputmatrix wel degelijk een `tmatrix` is, indien niet, maakt hij er alsnog een van.
+Vervolgens wordt de functie `project1` uitgevoerd voor elke gevraagde replicatie en elke gevraagde tijdsstap. (opgeslagen in `vn`)
+Na de uitvoering van `project1` wordt gecontroleerd of er ook management acties moeten worden uitgevoerd en indien dit het geval is, worden de resultaten opgeslagen in `vm`.
+Bij het uitvoeren van de managementacties kan zich de volgende situatie voordoen, indien de vector niet evenveel elementen als stages heeft: de inhoud van de vector wordt herhaald tot een matrix wordt gevormd met evenveel rijen als stages (die volledig gevuld zijn).
+Alle informatie wordt opgeslagen in een list en deze wordt teruggeven als klasse `rmas`.
+
+Merk op dat er bij de initialisatie van `vn` en `vm` de vector behorende bij de nulde tijdsstap twee maal wordt opgeslagen. Door dit te doen wordt de nodige informatie weergegeven als kolom (wat nodig is voor de functie `project1`). Indien men zou initialiseren door slechts een vector toe te voegen, zou men een error krijgen bij de uitvoering van `project1`. De overbodige kolom wordt op het einde van de funtie weer verwijderd dus geeft geen bias bij de verwerking van de resultaten.
+
+```{r projectn, eval=FALSE}
+function (v0, mat, matsd = NULL, estamb = FALSE, estdem = FALSE, 
+    equalsign = TRUE, stmat = NULL, fecundity1 = TRUE, nrep = 1, 
+    time = 10, management = NULL, round = TRUE) 
+{
+    if (sum(class(mat) == "tmatrix") == 0) 
+        mat <- as.tmatrix(mat)
+    vn <- NULL # zal populatiegroottes bijhouden bij elke tijdsstap
+    vm <- NULL # zal harvests (management acties) bijhouden bij elke tijsstap
+    for (i in 1:nrep) {
+        vn[[i]] <- cbind(v0, v0) 
+        vm[[i]] <- cbind(v0 * NA, v0 * NA) 
+    } # Op het einde van deze lus bevat vn nrep matrices bestaande uit 
+    #twee identieke kolommen met daarin de waarden uit v0 
+    # vm ziet er exact hetzelfde uit, alleen bevat elke positie de waarde NA
+    for (i in 1:time) {
+        for (ii in 1:nrep) {
+            v <- project1(v0 = vn[[ii]][, i + 1], mat = mat, 
+                matsd = matsd, estamb = estamb, estdem = estdem, 
+                equalsign = equalsign, stmat = stmat, fecundity1 = fecundity1)
+            if (round == TRUE) 
+                v <- round(v)
+            v.0 <- v
+            if (!is.null(management)) {
+                # maakt ook van vectoren matrices, maakt algemene code makkelijker
+                management <- matrix(management, nrow = dim(mat)[1]) 
+                for (j in 1:dim(management)[2]) {
+                  proportions <- abs(management[, j]) < 1
+                  #De proportions zorgt er voor dat enkel aanpassingen gebeuren waar
+                  #deze vector waarde TRUE heeft
+                  management[proportions, j] <- (round(v * management))[proportions] 
+                  v <- v + management[, j]
+                  v[v < 0] <- 0 # negatieve populatiegroottes kunnen niet bestaan
+                }
+            }
+            v.m <- v.0 - v # dit is 0 indien er geen management actie gewenst is
+            harvest <- v.m
+            harvest[v.m < 0] <- 0 
+            # harvest gaat over dat deel van de populatie dat geoogst werd, 
+            #niet over eventuele maatregelen waarbij individuen worden toegevoegd
+            vn[[ii]] <- cbind(vn[[ii]], v)
+            vm[[ii]] <- cbind(vm[[ii]], harvest)
+        }
+    }
+    vn <- lapply(vn, function(x) x[, -1]) # verwijder overal de eerste kolom die dubbel was
+    vm <- lapply(vm, function(x) x[, -1])
+    vnm <- list(vn = vn, harvest = vm, mat = mat, management = management)
+    class(vnm) <- c("rmas", class(vnm))
+    return(vnm)
+}
+```
+
+
+### Functies
+1. `project1(v0, mat, matsd=NULL, estamb=FALSE, estdem=FALSE, equalsign=TRUE, stmat=NULL, fecundity1=TRUE)` 
+  + Deze functie wordt voor elke tijdsstap geitereerd
+2. `estambi(mat, matsd, equalsign)` 
+  + Functie die de environmental stochasticity uitvoert
+3. `estdemo(v0,mat,stmat=NULL, fecundity1=TRUE)` 
+  + Functie die de demographic stochasticity uitvoert
+4. `plot(x, sum = TRUE, mean=FALSE, type="l", harvest=FALSE, ...)`
+  + plot de populatiegroottes op elk tijdstip van de simulatie
+  + x is van de klasse `rmas` (i.e. output van het projectn commando)
+  + Als `sum=TRUE` worden alle stages samengeteld en de evolutie van de totale populatie wordt geplot, anders wordt er voor elke stage afzonderlijk een plot gemaakt
+  + Als `mean=FALSE` wordt de evolutie van elke simulatie geplot, anders enkel een gemiddelde over alle simulaties
+  + `Type` geeft het type van plot weer (lijn, puntjes...)
+  + Als `Harvest=TRUE` wordt de harvest geplot in plaats van de populatie
+5. ` summary(object, stage=NULL, harvest=FALSE,...)` 
+  + Geeft een samenvatting van de resultaten
+  + Bij `stage` geef je de naam in van de stage waarover je informatie wil printen, indien `NULL` wordt informatie over alle stages afgedrukt
+  + `object` moet ook van de klasse `rmas` zijn.
+  
+## Project1()
+
+### Input
+De nodige parameters zoals ingegeven in `projectn()` worden meegegeven
+
+### Onderliggende code
+Deze functie zorgt dat de juiste combinatie functies wordt uitgevoerd voor een bepaalde logische combinatie van waarden voor `estamb` en `estdem`.
+
+De functie `estambi` geeft een nieuwe matrix terug, die vervolgens nog met de vector van huidige populatiegroottes moet worden vermenigvuldigd.
+De functie `estdem` geeft meteen een geupdatete versie van de vector met populatiegroottes terug.
+
+Indien zowel environmental als demographic stochasticity worden gevraagd, wordt eerst de environmental stochasticity toegepast op de matrix en vervolgens wordt de uiteindelijke waarde voor `v1` verkregen door met deze nieuwe matrix demographic stochasticity toe te passen.
+
+```{r Project1, eval=FALSE}
+function (v0, mat, matsd = NULL, estamb = FALSE, estdem = FALSE, 
+	equalsign = TRUE, stmat = NULL, fecundity1 = TRUE) 
+{
+  #zonder environmental/demographic stochasticity komt 1 iteratie neer op een matrixvermenigvuldiging
+	if (estamb == FALSE & estdem == FALSE) 
+		v1 <- mat %*% v0 
+	#Wat (volgens mij redundante) code indien enkel demografische stochasticiteit wordt gevraagd
+	if (estamb == FALSE & estdem == TRUE & is.null(stmat) & 
+		fecundity1 == TRUE) 
+		v1 <- estdemo(v0, mat = mat)
+	if (estamb == FALSE & estdem == TRUE & is.null(stmat) & 
+		fecundity1 == FALSE) 
+		v1 <- estdemo(v0, mat = mat, fecundity1 = FALSE)
+	if (estamb == FALSE & estdem == TRUE & !is.null(stmat)) 
+		v1 <- estdemo(v0, mat = mat, stmat = stmat)
+	# enkel environmental stochasticity
+	if (estamb == TRUE & estdem == FALSE) {
+		if (is.null(matsd)) 
+			stop("there is not SD matrix provided (argument matsd=NULL)")
+		v1 <- estambi(mat = mat, matsd = matsd, equalsign = equalsign) %*% 
+			v0
+	}
+	# Zowel environmental als demographic stochasticity
+	if (estamb == TRUE & estdem == TRUE) {
+		if (is.null(matsd)) 
+			stop("there is not SD matrix provided (argument matsd=NULL)")
+		if (is.null(stmat) & fecundity1 == TRUE) 
+			v1 <- estdemo(v0, mat = estambi(mat, matsd, equalsign = equalsign))
+		if (is.null(stmat) & fecundity1 == FALSE) 
+			v1 <- estdemo(v0, mat = estambi(mat, matsd, equalsign = equalsign), 
+				fecundity1 = FALSE)
+		if (!is.null(stmat)) 
+			v1 <- estdemo(v0, mat = estambi(mat, matsd, equalsign = equalsign), 
+				stmat = stmat)
+	}
+	return(v1)
+}
+```
+
+## Estdemo()
+
+### Onderliggende code
+Deze functie past demografische stochasticiteit toe.
+
+Er zijn 3 verschillende mogelijke situaties:
+
+1. De 1e rij van de transitiematrix zijn sowieso fecunditeiten, de overige elementen worden als fecunditeiten beschouwd indien $>1$ en als survivalrates indien $\leqslant 1$
+
+2. Elk element in de matrix kan fecunditeit of survivalrate zijn. Een element wordt alweer als fecunditeit beschouwd indien $>1$ en als survivalrate indien $\leqslant 1$
+
+3. Bepaalde elementen uit de matrix ($M$) zijn combinaties van survivalrates en fecunditeiten. In dat geval wordt een matrix ($T$) meegegeven met daarin het aandeel dat de fecunditeit heeft in het matrixelement. De geboorteresultaten worden dus berekend op basis van de aantallen $m_{ij}*t_{ij}$ en de survivalkansen op basis van $m_{ij}-m_{ij}*t_{ij}$
+
+Geboortes worden gesampled uit een Poisson verdeling, RAMAS neemt hiervoor 1 trekking uit een Poissonverdeling met gemiddelde $F_i*N_i$ terwijl Rramas een $N_i$ trekkingen doet uit een Poissonverdeling met gemiddelde $F_i$ en deze daarna sommeert, dit geeft echter nagenoeg hetzelfde resultaat.
+Survival rates worden gesampled uit een binomiale verdeling, met kans $S_{ij}$ en steekproefgrootte $N_i$. Het resulterende aantal overlevenden is dus het aantal keer dat de sample 1 terug gaf.
+
+```{r estdemo, eval=FALSE}
+function (v0, mat, stmat = NULL, fecundity1 = TRUE) 
+{
+    v <- v0
+    B <- NULL
+    S <- NULL
+    # Situatie 1 
+    if (is.null(stmat) & fecundity1 == TRUE) {
+        for (i in 1:(dim(mat)[1])) {
+            Bi <- 0 # aantal jongen geproduceerd door stage i
+            if (mat[1, i] > 0) 
+                Bi <- rpois(v[i], mat[1, i]) # logischer zou zijn
+            #rpois(1,(v[i]*mat[1,i])), maar het eindresultaat zal ongeveer hetzelfde zijn
+            B <- c(B, Bi) # voeg alle geboortes samen
+            Sj <- NULL # survival van stage j 
+            #(blijf in stage of komend van vorige stage)
+            for (j in 1:(dim(mat)[1] - 1)) {
+                Sij <- 0
+                if (mat[j + 1, i] > 0) {
+                  if (mat[j + 1, i] > 1) 
+                    Sij <- sum(rpois(v[i], mat[j + 1, i])) 
+                  # We hebben weer te maken met een fecunditeit
+                  else Sij <- sum(rbinom(v[i], size = 1, mat[j + 
+                    1, i])) # hier is het een survivalrate
+                }
+                Sj <- c(Sj, Sij)
+            }
+            S <- cbind(S, Sj)
+        }
+        B <- sum(B) # bereken totaal aantal geboortes
+        S <- apply(S, 1, sum) # Bereken nieuwe populatiegroottes in elke stage
+        result <- c(B, S) # de nieuwe vector met populatiegroottes
+    }
+    # Situatie 2
+    if (is.null(stmat) & fecundity1 != TRUE) {
+      # Elk matrixelement wordt gelijk behandeld, 
+      #elke keer controleren of het < of > is dan 1
+        for (i in 1:(dim(mat)[1])) {
+            Sj <- NULL
+            for (j in 1:(dim(mat)[1])) {
+                Sij <- 0
+                if (mat[j, i] > 0) {
+                  if (mat[j, i] > 1) 
+                    Sij <- sum(rpois(v[i], mat[j, i]))
+                  else Sij <- sum(rbinom(v[i], size = 1, mat[j, 
+                    i]))
+                }
+                Sj <- c(Sj, Sij)
+            }
+            S <- cbind(S, Sj)
+        }
+        S <- apply(S, 1, sum) # sommeer per rij, resultaat is vn
+        result <- S
+    }
+    # Situatie 3
+    if (!is.null(stmat)) {
+        matF <- mat * stmat
+        matS <- mat - matF
+        for (i in 1:(dim(mat)[1])) {
+            BSj <- NULL
+            for (j in 1:(dim(mat)[1])) {
+                Bij <- ifelse(matF[j, i] > 0, sum(rbinom(v[i], 
+                  size = 1, matF[j, i])), 0) # aantal geboortes
+                Sij <- ifelse(matS[j, i] > 0, sum(rpois(v[i], 
+                  matS[j, i])), 0) # aantal overlevingen 
+                BSij <- Bij + Sij #totaal populatiegrootte-resultaat 
+                #van stage i naar stage j
+                BSj <- c(BSj, BSij)
+            }
+            S <- cbind(S, BSj)
+        }
+        S <- apply(S, 1, sum) #sommeer per rij, resultaat is vn
+        result <- S
+    }
+    return(result)
+}
+```
+
+## Estambi()
+
+Deze functie simuleert environmental stochasticity. Hiervoor moet er ook een matrix met standaarddeviaties meegegeven worden.
+Survival rates en fecunditeiten worden dan gesampled uit een normale verdeling.
+
+### Onderliggende code
+```{r estambi, eval=FALSE}
+function (mat, matsd, equalsign) {
+    mat <- as.matrix(mat)
+    matsd <- as.matrix(matsd)
+    if (equalsign != TRUE) {
+      # Geen restrictie op grootteorde en teken,
+      # dus gewoon sample uit normale verdeling
+        mat <- matrix(rnorm(length(mat), mean = as.vector(mat), 
+            sd = as.vector(matsd)), nrow = dim(mat)[1], ncol = dim(mat)[2])
+    }
+    if (equalsign == TRUE) {
+      # Enkel de afwijking samplen, 
+      #elke iteratie wordt will. met 1 of -1 vermenigvuldigd
+        deviates <- abs(rnorm(length(mat), mean = 0, sd = as.vector(matsd))) * 
+            sample(c(-1, 1), 1)
+        mat <- mat + matrix(deviates, nrow = dim(mat)[1], ncol = dim(mat)[2])
+    }
+    mat[mat < 0] <- 0 #alle negatieve elementen vervangen door 0
+    mat[-1, ][mat[-1, ] > 1] <- 1 # alle survivalrates die groter zijn dan 1, vervangen door 1.
+    return(mat)
+}
+```
+
+
+## Decline
+
+### Onderliggende code
+Deze functie neemt een resultaat van `projectn`, waarbij meerdere iteraties per tijdseenheid zijn gebruikt en geeft een object van de klasse `rmas.risk` terug, dit bevat de kans om een bepaalde minimale populatiegrootte te bereiken, en 1000 (of een ander gespecifieerd aantal) bootstrap samples (+ dezelfde kansen berekend op basis van deze bootstrapsamples). De berekening van deze kansen is gebaseerd op de resultaten van de verschillende iteraties in `projectn`.
+
+Deze resultaten kunnen geprint worden, maar dit is niet zo'n nuttige informatie. De functies `summary` en `plot` geven de relevante informatie weer. Zijnde de extinctiekansen op basis van de `projectn`-dataset en bijhorende varianties, berekend op basis van de bootstrap data.
+
+```{r decline, eval=FALSE}
+function (rmas, bootsp = 1000) 
+{
+    x <- rmas
+    if (class(x)[1] != "rmas") 
+        stop("decline requires an rmas object (i.e. a trajectory simulation from projectn)")
+    if (length(names(x)) > 0) {
+        x <- x$vn # haal de matrix met de populatiegroottes uit het rmas-datatype
+    }
+    # sommeer over stages
+    abundances <- sapply(x, function(rmas) apply(rmas, 2, sum)) 
+    # zoek minimum over alle tijdsstappen voor elke simulatie
+    abundances.min <- round(apply(abundances[-1, ], 2, min))
+    # bootstrapping voor de minima
+    abminbot <- as.list(1:bootsp)
+    abminbot <- lapply(abminbot, function(x) x <- sample(abundances.min, 
+        replace = TRUE))
+    # zoek alle unieke minima die bereikt zijn en sorteer ze
+    thresholds <- sort(unique(abundances.min))
+    # zoek de kansen om deze minima te bereiken
+    # i.e. hoe vaak dit minimum of kleiner bereikt werd in de sample
+    decl.prob <- function(abundances.min, thresholds) {
+        cf <- NULL
+        for (i in 1:length(thresholds)) {
+            cf <- c(cf, sum(abundances.min <= thresholds[i]))
+        }
+        cf <- cf/length(abundances.min)
+        cf <- data.frame(Threshold = thresholds, Probability = cf)
+        return(cf)
+    }
+    # pas deze functie toe voor bekomen sample en voor alle bootstrap samples
+    cf.obs <- decl.prob(abundances.min, thresholds = thresholds)
+    cf.boot <- lapply(abminbot, decl.prob, thresholds = thresholds)
+    result <- list(cf.obs = cf.obs, cf.boot = cf.boot, abminbot = abminbot, 
+        main = "Decline/Extinction")
+    class(result) <- c("rmas.risk", class(result))
+    return(result)
+}
+```
+
+### Functies
+1. `summary(decline, q)`
+  + geeft de kans om een bepaalde minimale populatiegrootte te bereiken en de $2.5\%$ en $97.5\%$ kwantielen berekend op basis van de bootstrap data en maakt hier een plot van 
+  + adhv de parameter `q` kunnen de weergegeven kwantielen veranderd worden
+  + Meer dan twee kwantielen kunnen opgegeven worden slechts de twee eerst opgegeven kwantielen getekend op het plot.
+2. `plot(summary)`
+  + geef een object van de klasse `summary.rmas.risk` mee (bekomen door vorige functie)
+  + geeft enkel het plot en laat toe allerlei aanpassingen toe te passen die eigen zijn aan het `plot`-commando.
+  
+### Voorbeeld
+```{r decline.example}
+v0 <- c(100,22,6)
+M <- coryphanthaA
+corySim <- projectn(v0,M,estdem = TRUE, nrep=1000, time=25)
+declineCory <- decline(corySim)
+summary(declineCory)
+```
+
+## Explosion()
+
+### Onderliggende code
+Doet exact hetzelfde als `decline`, maar dan met maxima ipv. minima.
+```{r explosion, eval=FALSE}
+function (rmas, bootsp = 1000) {
+    x <- rmas
+    if (class(x)[1] != "rmas") 
+        stop("explosion requires an rmas object (i.e. a trajectory simulation from projectn)")
+    if (length(names(x)) > 0) {
+        x <- x$vn
+    }
+    abundances <- sapply(x, function(rmas) apply(rmas, 2, sum))
+    abundances.min <- round(apply(abundances[-1, ], 2, max))
+    abminbot <- as.list(1:bootsp)
+    abminbot <- lapply(abminbot, function(x) x <- sample(abundances.min, 
+        replace = TRUE))
+    thresholds <- sort(unique(abundances.min))
+    decl.prob <- function(abundances.min, thresholds) {
+        cf <- NULL
+        for (i in 1:length(thresholds)) {
+            cf <- c(cf, sum(abundances.min >= thresholds[i]))
+        }
+        cf <- cf/length(abundances.min)
+        cf <- data.frame(Threshold = thresholds, Probability = cf)
+        return(cf)
+    }
+    cf.obs <- decl.prob(abundances.min, thresholds = thresholds)
+    cf.boot <- lapply(abminbot, decl.prob, thresholds = thresholds)
+    result <- list(cf.obs = cf.obs, cf.boot = cf.boot, abminbot = abminbot, 
+        main = "Explosion/Increase")
+    class(result) <- c("rmas.risk", class(result))
+    return(result)
+}
+```
+
+### Voorbeeld
+```{r explosionEx}
+corySim2 <- projectn(v0,M,estdem = TRUE, nrep=500, time=20)
+explosionCory <- explosion(corySim,500)
+summary(explosionCory)
+```
+
+# Tekortkomingen in de code
+
+## Geen controle op input
+Bij het uitvoeren van de functie `projectn()` wordt niet gecontroleerd of de matrix wel voldoet aan de voorwaarden van een transitiematrix. 
+Zo wordt er in het programma RAMAS het volgende gecontroleerd (zie Algoritme documentatie):
+
+1. Alle waarden in de transitiematrix en de standaarddeviatiematrix moeten $\geqslant 0$ zijn.
+
+2. Survival rates moeten tussen 0 en 1 liggen en ook de som van de survival rates in elke kolom moet tussen 0 en 1 liggen (in RAMAS heb je wel de optie om deze controle in of uit te schakelen).
+
+```{r fout1, fig.height=3, fig.width=5}
+v0 <- c(200,44,38,104)
+negM <- cbind((1:4)*(-1), (5:8)*(-1),1:4,5:8)
+resultaat <- projectn(v0,negM)
+summary(resultaat)
+```
+
+## Fout in de code voor Managment actie
+Dit stuk code is op sommige plekken aangepast zodat het universeel zou zijn voor vectoren en matrices als input, maar wanneer de input een matrix is, gaat er iets mis.
+
+## Estambi
+
+Bij de berekening van environmental stochasticity wordt de normale verdeling gebruikt, terwijl dit in Morris & Doak als slecht wordt bestempeld en zelfs in de RAMAS handleiding wordt afgeraden (ookal is het wel een optie in RAMAS).
+
+Verder wordt er in de `estambi` functie blijkbaar van uitgegaan dat alles op de eerste rij fecunditeiten zijn en de rest survival rates. Dit is raar, aangezien er bij `estdemo` wel als optie kan meegegeven worden dat dit standaardpatroon niet gevolgd wordt.
+
+## Houdt nog geen rekening met metapopulaties
+
+## Implementeert nog een heleboel andere nuttige zaken uit RAMAS niet
+
+
+# Nieuwe `Summary` functies
+## `tmatrix`
+
+```{r tmatrixSummary, eval=FALSE}
+function (object, ...) {
+    name.mat <- deparse(substitute(object))
+    x <- object
+    di <- dim(x)[1]
+    m.names <- dimnames(x)[[1]]
+    ea <- eigen(x)
+    lambda <- abs(ea$values[1]) #eigenwaarden gesorteerd en eigenvectoren corresponderen ermee
+    ssd <- abs(ea$vectors[, 1]/sum(ea$vectors[, 1])) # stable stage distribution
+    ae <- eigen(t(x))
+    vr <- abs(ae$vectors[, 1]/ae$vectors[1, 1]) # reproductive value
+    sensitivity <- (vr %*% t(ssd))/(t(vr) %*% ssd)[1, 1] #zie formule Caswell
+    elasticity <- sensitivity * x/lambda
+    result <- list(lambda = lambda, stable.stage.distribution = ssd, 
+        reproductive.value = vr, sensitivity = sensitivity, elasticity = elasticity, 
+        name.mat = name.mat, m.names = m.names)
+    class(result) = c("summary.tmatrix", class(result))
+    return(result)
+}
+```
+
+## `rmas`
+
+```{r rmasSummary, eval=FALSE}
+function (object, stage = NULL, harvest = FALSE, ...) 
+{
+    cosa <- object
+    if (length(names(cosa)) > 0) {
+        if (harvest == FALSE) 
+            cosa <- cosa$vn
+        else cosa <- cosa$harvest
+    }
+    nl <- length(cosa)
+    time <- dim(cosa[[1]])[2]
+    if (nl > 1) {
+        abundances <- sapply(cosa, function(x) apply(x, 2, sum))
+        if (!is.null(stage)) 
+            abundances <- sapply(cosa, function(x) x[stage, ])
+        summary <- apply(abundances, 1, function(x) c(min(x), 
+            mean(x) - sd(x), mean(x), mean(x) + sd(x), max(x)))
+        summary <- t(summary)
+        summary <- data.frame(cbind(0:(time - 1), round(summary, 
+            2)), row.names = 0:(time - 1))
+        names(summary) <- c("Time", "Minimum", "-1 S.D.", "Average", 
+            "+1 S.D.", "Maximum")
+    }
+    if (nl == 1) {
+        abundances <- apply(cosa[[1]], 2, sum)
+        if (!is.null(stage)) 
+            abundances <- apply(cosa, function(x) x[stage, ])
+        summary <- cbind(0:(time - 1), abundances)
+        colnames(summary) <- c("Time", "Abundance")
+    }
+    summary <- data.frame(summary, row.names = NULL, check.names = FALSE)
+    class(summary) <- c("summary.rmas", class(summary))
+    warnold <- options("warn")
+    options(warn = -1)
+    plot(summary)
+    options(warn = warnold$warn)
+    return(summary)
+}
+```
+
+## `rmas.risk`
+
+```{r riskSummary, eval=FALSE}
+function (object, q = c(0.025, 0.975), ...) 
+{
+    cosa <- object
+    cosa.boot <- NULL
+    for (i in 1:length(cosa$cf.boot)) {
+        cosa.boot <- cbind(cosa.boot, cosa$cf.boot[[i]][, 2])
+    }
+    tabla <- cbind(cosa$cf.obs, t(apply(cosa.boot, 1, quantile, 
+        q)))
+    class(tabla) <- c("summary.rmas.risk", class(tabla))
+    plot(tabla, main = cosa$main)
+    return(tabla)
+}
+```
