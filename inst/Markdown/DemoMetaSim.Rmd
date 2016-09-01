@@ -1,0 +1,249 @@
+---
+title: "Coryphantha Robbinsorum"
+author: "Aranka Steyaert"
+date: "19 August 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(popbio)
+```
+
+# Situering
+Morris & Doak presenteren een stuk code voor een simulatie van een meta-populatie matrixmodel (welliswaar nog zonder dispersie). In deze simulatie houden ze rekening met stochasticiteit en densiteitsafhankelijkheid.
+
+Ze gaan uit van een projectiematrix voor elke populatie die er als volgt uit ziet:
+$$ A = \left( \begin{array}{cccc}
+        0 & 0 & 0 & f_4 s_4 \\
+        s_1 & s2(1-g_2) & 0 & 0 \\
+        0 & s_2 g_2 & s_3 (1-g_3) & 0\\
+        0 & 0 & s_3 g_3 & s_4
+        \end{array}\right)
+$$
+
+Aangezien er sprake is van 3 populaties, heeft elke populatie een matrix van deze vorm (noem deze $A$, $B$ en $C$). De metapopulatie matrix heeft dan de volgende vorm (we houden nog geen rekening met dispersie):
+$$ G = \left( \begin{array}{ccc}
+        A & 0 & 0\\
+        0 & B & 0\\
+        0 & 0 & C
+        \end{array} \right)
+$$
+
+Deze matrices kunnen met de volgende functie opgesteld worden, gegeven de vital rates:
+```{r Matrixfunctie}
+makemx <- function(vrates,dimpop,popnum){
+  return <- list()
+  for(i in 1:3){
+    return <- c(return,list(rbind(c(0,0,0,vrates[19]*vrates[(4+6*(i-1))]),c(vrates[(1+6*(i-1))],vrates[(2+6*(i-1))]*(1-vrates[(5+6*(i-1))]),0,0),c(0,vrates[(2+6*(i-1))]*vrates[(5+6*(i-1))],vrates[(3+6*(i-1))]*(1-vrates[(6+6*(i-1))]),0),c(0,0,vrates[(3+6*(i-1))]*vrates[(6+6*(i-1))],vrates[4+6*(i-1)]))))
+  }
+  zero <- matrix(0,dimpop,dimpop)
+  G<- rbind(cbind(return[[1]],zero,zero),cbind(zero,return[[2]],zero),cbind(zero,zero,return[[3]]))
+  return <- c(return,list(G))
+  namen <- c("mx1","mx2","mx3","mx")
+  names(return)<-namen
+  return
+}
+```
+
+# R code
+
+Morris & Doak geven een code geschikt voor gebruik in *Matlab* deze kunnen we als volgt omzetten in R-code.
+
+## Input
+Eerst en vooral lezen we de inputdata in (gebaseerd op data uit de paper van Schmalzel et al. uit 1995). Deze bestaat uit 1 rij per jaar van meting en 19 kolommen, nl. $s_1, s_2, s_3, s_4$ de survivalrates voor elke Stage, $g_2$ en $g_3$ de growth rates voor de juveniele jaren en $f$ de fecunditeit. $s_i$ en $g_i$ zijn verschillend voor elke populatie, terwijl $f$ dezelfde waarde heeft voor de drie populaties.
+```{r Inputfile, results='hide', warning=FALSE}
+inputfile <- "coryrates.txt"  #gebaseerd op data uit de paper
+vrates <- as.matrix(read.table(inputfile, header = TRUE, stringsAsFactors = TRUE))
+```
+
+Vervolgens voeren we gegevens in die later de verdeling zullen bepalen waaruit de data gesampled zal worden (zie verder).
+```{r stochasticInput}
+vrtypes <- c(rep(1,times=18),3) #1:beta, 2:stretched beta, 3:lognormal
+vrmins <- rep(0,times=19)# geen streched betas dus alles is hier gewoon 0
+vrmaxs <- rep(0,times=19)
+```
+
+Tot slot geven we ook nog een beginvector mee en heel wat data die we later zullen nodig hebben:
+```{r inputdata}
+n0 <- c(720,26,13,24,920,6,10,23,980,12,20,31)#initiele populatieverdeling
+#n0 <- c(0,0,0,0,920,6,10,23,980,12,20,31) 
+# initiele verdeling wanneer geen rekening gehouden wordt met de eerste populatie
+Ncap <- c(100,100,100)#maximale populatiegrootte
+Ne <- c(20,20,20) # quasi-extinctiegrens
+tmax <- 100 # aantal simulatiejaren
+np <- 19 # aantal vital rates in vrates
+dims <- 12 # dimensie van G
+runs <- 500 # aantal simulaties
+popnum <- 3 # aantal verschillende populaties
+dimpop <- 4 # aantal stages
+```
+We kunnen zien dat densiteitsafhankelijkheid zal gesimuleerd worden door een *cap* te zetten op de totale populatiegrootte. We stellen ook een quasi-extinctiegrens in. We simuleren gedurende 100 jaar en elke simulatie bestaat uit 500 runs.
+
+## Een stochastisch model.
+De code die gegeven wordt voor dit model in Morris & Doak kadert zich in een PVA op basis van geschatte vital rates in plaats van matrixelementen. Dit laat toe rekening te houden met correlaties tussen vital rates binnen hetzelfde jaar en over verschillende jaren heen.
+
+### Gemiddelde, variantie en correlatie van vital rates
+Aangezien metingen nooit exacte voorspellingen geven van de waarden van vital rates over de jaren heen, maar eerder een gemiddelde waarde waarrond deze zullen varieren, is het logischer om een stochastische in plaats van een deterministische aanpak te gebruiken. Dit houdt in dat voor elke tijdsstap in de simulatie, deze stap een bepaald aantal keer zal gerund worden, met telkens een verschillende matrix. De waarden in de matrix zullen echter wel bepaald zijn aan de hand van een bepaalde stochastische verdeling op basis van het gemiddelde, de variantie en covariantie die bepaald worden door middel van de metingen.
+De volgende code bepaalt eerst en vooral het gemiddelde, de variantie en de correlaties van de vital rates:
+```{r Initialisatie, warning=FALSE}
+vrmeans <- colMeans(vrates) 
+vrvars <- diag(var(vrates))
+corrmatrix <- cor(vrates)
+corrmatrix[,19] <- 0 
+corrmatrix[19,] <- 0
+corrmatrix[19,19] <- 1
+popNstart <- c(1:popnum)
+for(pp in 1:popnum) {
+  popNstart[pp] <- sum(n0[(2+dimpop*(pp-1)):(dimpop*pp)]) # initiele populatiegrootte (alles behalve zaden)
+}
+```
+Merk op dat de auteurs aannemen dat de fertiliteit ongecorreleerd is met de andere vital rates en dat deze variantie $=1$ heeft.
+
+#### Beta-verdeling
+Voor het simuleren van survival- en growthrates gebruiken Morris & Doak de beta-verdeling. Deze verdeling zal altijd waarden tussen 0 en 1 aannemen, wat we verwachten voor survival- en growthrates. De verdelingsfunctie van deze verdeling wordt gegeven door $f(x) = \frac{x^{a-1}(1-x)^{b-1}}{Beta(a,b)}$. Hierbij is $Beta(a,b)$ de beta-functie en $a$ en $b$ zullen in dit geval berekend worden op basis van het gemiddelde ($\bar{v_i}$) en de variantie ($\text{var}(v_i)$) van de vital-rate onder beschouwing.
+$$ a = \bar{v_i}\left[ \frac{\bar{v_i}(1-\bar{v_i})}{\text{var}{v_i}}-1\right] \text{ en } b= (1-\bar{v_i})\left[ \frac{\bar{v_i}(1-\bar{v_i})}{\text{var}{v_i}}-1\right]
+$$
+
+Met deze informatie zou men beta-waarden kunnen samplen met een basiscomando uit R, maar dit soort commando's kunnen vaak geen gecorreleerde beta-waarden samplen. 
+Morris & Doak presenteren een methode die ook in staat is gecorreleerde beta-waarden te samplen, deze is geimplementeerd in het **popbio**-pakket onder de naam `betaval`, met als input gemiddelde, variantie en een specifieke waarde van de cumulatieve distributiefunctie.
+Omdat deze methode zeer computerintensief is, raden zij verder aan deze waarden eenmalig op voorhand te berekenen (voor 100 verschillende waarden van de CDF) en vervolgens hier 1 waarde random uit te kiezen telkens men een beta-waarde nodig heeft.
+
+#### Standaard Normale verdeling
+Veel PVA's gebruiken een standaardnormale verdeling om vital rates te samplen. Dit wordt echter afgeraden (door verschillede bronnen, oa. Morris & Doak en de RAMAS handleiding) omdat de standaardnormale verdeling waarden aanneemt tussen $- \infty$ en $+ \infty$ en truncatie leidt tot andere gemiddelden en varianties.
+
+#### Lognormale verdeling
+Deze verdeling wordt door Morris & Doak aangeraden voor het sampelen van fertiliteiten, omdat het bereik van deze verdeling klopt met wat biologisch haalbaar is.
+Het **popbio** pakket bevat ook een functie `lnorms` dat na input van een gemiddelde, variantie en aantal observaties een standaardnormale waarde sampelt en dit omzet in een lognormale waarde.
+
+#### Stretched beta-verdeling
+Deze verdeling wordt door Morris en Doak voorgesteld als alternatief voor het sampelen van fertiliteiten omdat het bij deze verdeling, in tegenstelling tot bij de lognormale verdeling, mogelijk is een bovengrens in te stellen voor de fertiliteiten. Deze verdeling is niet meer dan een gewone beta-verdeling die wordt uitgerokken om een groter interval te beslaan dan $[0,1]$ en is ook in het **popbio** pakket geimplementeerd onder de naam `stretchbetaval`.
+
+Ook hier wordt door Morris en Doak aangeraden om een honderdtal waarden op voorhand te berekenen en bij te houden. 
+Dit kan met de volgende code gebeuren:
+```{r beta_opslag}
+parabetas <- matrix(0,99,np)
+for(j in 1:np){
+  if(vrtypes[j]!=3){
+    for(fx99 in 1:99){
+      if(vrtypes[j]==1){
+        parabetas[fx99,j] <- betaval(vrmeans[j],sqrt(vrvars[j]),fx99/100) 
+      }
+      if(vrtypes[j]==2){
+        parabetas[fx99,j] <- stretchbetaval(vrmeans[j],sqrt(vrvars[j]),vrmins[j],vrmax[j],fx99/100)
+      }
+    }
+  }
+}
+```
+
+### Gecorreleerde vital rates.
+Er bestaat een eenvoudige methode om ongecorreleerde standaardnormaal verdeelde vital rates om te zetten in gecorreleerde vital rates, namelijk als volgt.
+We beginnen met een matrixdecompositie van de correlatiematrix $C = W*D*W^{T}$, waarbij $D$ een diagonaalmatrix is met alle eigenwaarden van $C$ op de diagonaal en $W$ een matrix waarvan de kolommen de rechtse eigenvectoren corresponderend met de eigenwaarden zijn.
+Wanneer we dan $C^{1/2} = W* D^{1/2} * W^{T}$ definieren, kunnen we deze matrix gebruiken om van een vector $m$ met ongecorreleerde standaardnormalewaarden een vector $y$ met gecorreleerde standaardnormale waarden te maken als volgt: $y = C^{1/2}m$.
+```{r correlatie}
+Eigenv <- eigen(corrmatrix)
+W<-Eigenv$vectors
+D<-diag(Eigenv$values)
+M12 <- W%*%(sqrt(abs(D)))%*%t(W) #(absolute waarde om negatieve correlaties tegen te gaan)
+```
+
+Deze waarden moeten we dan enkel nog omzetten naar de correcte verdeling voor de vital rates, aangezien we net vermeld hebben dat de standaardnormale verdeling hier meestal geen goede keuze voor is. 
+
+Voor de lognormale verdeling is dit geen probleem, we moeten enkel de code uit **popbio** die een steekproefgrootte accepteert omzetten naar een gelijkaardige code die een reeds berekende standaardnormale waarde accepteert.
+```{r lnorms2}
+lnorms2 <- function (n, mean = 2, var = 1) # n is een waarde uit de standaardnormale verdeling
+{
+  nmeans <- log(mean) - 0.5 * log(var/mean^2 + 1)
+  nvars <- log(var/mean^2 + 1)
+  normals <- n * sqrt(nvars) + nmeans
+  lns <- exp(normals)
+  lns
+}
+```
+
+Voor een (stretched) beta-verdeling moeten we eerst de standaardnormale cdf-waarde zoeken die correspondeert met de berekende standaardnormale vital rate en vervolgens de beta-verdeelde waarde opvragen die correspondeert met deze cdf-waarde, die nu beschouwd wordt als beta-cdf-waarde.
+
+## De uiteindelijke simulatie
+Het uiteindelijke simuleren van het gedrag van de populaties gebeurt met de volgende code:
+```{r Simulatie}
+### Eigenwaarden zoeken
+vrs<-vrmeans
+matrixlijst <- makemx(vrmeans,dimpop,popnum)
+mx1<-matrixlijst$mx1
+mx2<-matrixlijst$mx2
+mx3<-matrixlijst$mx3
+mx<-matrixlijst$mx
+lam1a<-eigen.analysis(mx1)$lambda1
+lam1b<-eigen.analysis(mx2)$lambda1
+lam1c<-eigen.analysis(mx3)$lambda1
+lam0 <-eigen.analysis(mx)$lambda1
+
+### Aanmaken opslagplaats voor resultaten
+PrExt <- matrix(0,tmax,1) #Extinctiekans (extinction time tracker)
+logLam <- matrix(0,runs,popnum) # log-lambda values
+stochLam <- matrix(0,runs,popnum) # stochastic lambda values
+
+for(xx in 1:runs){
+  nt<-n0 #populatiegroottes initialiseren
+  extinct <- matrix(0,1,popnum) #houdt extincties bij
+  for(tt in 1:tmax){
+    m<-rnorm(np) #uncorrelated random normal values
+    yrxy<-M12%*%m  #correlated random normal values
+    for(yy in 1:np){ # zet normale waarden om naar de juiste verdeling
+      if(vrtypes[yy] != 3){# een random parabeta-waarde kiezen uit de vooraf opgestelde lijst
+        index <- round(100*pnorm(yrxy[yy])) 
+        # we hebben maar 100 waarden bijgehouden dus we moeten afronden
+        if(index==0){index<-1}
+        if(index==100){index<-99}
+        vrs[yy]<-parabetas[index,yy]
+      }else{
+        vrs[yy]<-lnorms2(yrxy[yy],vrmeans[yy],vrvars[yy]) 
+      }
+    }
+    matrixlijst<-makemx(vrs,dimpop,popnum) #nieuwe matrix
+    mx<-matrixlijst$mx
+    nt<-mx%*%nt #matrixvermenigvuldiging met populatievector
+    popNs <- vector("numeric",popnum)
+    for(pp in 1:popnum){ #cap op de populatie
+      popNs[pp]<-sum(nt[(2+dimpop*(pp-1)):(dimpop*pp)])
+      if(popNs[pp]>Ncap[pp]){
+        nt[(2+dimpop*(pp-1)):(dimpop*pp)] <- nt[(2+dimpop*(pp-1)):(dimpop*pp)]/Ncap[pp]
+      }
+    }
+    if(sum(extinct)<popnum){#bijhouden op welk tijdstip in een run de populatie uitsterft
+      for(nn in 1:popnum){
+        if(popNs[nn]<=Ne[nn]){extinct[nn]<-1}
+      }
+      if(sum(extinct)==popnum){PrExt[tt]<-PrExt[tt]+1}
+    }
+  }
+  logLam[xx,] <- (1/tmax)*log(popNs/popNstart)
+  stochLam[xx,]<-(popNs/popNstart)^(1/tmax)
+}
+CDFExt <- cumsum(PrExt/runs)
+```
+
+# Resultaten
+Na deze simulatie vinden we de volgende resultaten:
+
+De deterministische groeiratios worden gegeven door:
+```{r stochLambda}
+lam1a
+lam1b
+lam1c
+```
+En het stochastische groeiratio door 
+```{r} 
+exp(mean(logLam))
+```
+
+Een histogram van de logaritme van de stochastische lambdas:
+```{r Histogram}
+hist(logLam)
+```
+
+Tot slot kunnen we ook de cumulatieve functie van de extinctiekans opvragen:
+```{r CumExt}
+plot(CDFExt, type="l")
+```
