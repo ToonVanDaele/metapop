@@ -144,7 +144,7 @@ dimnames(G2)<- list(meta_classes,meta_classes)
 G2
 
 setwd("/Users/Aranka/Documents/Stage_INBO/metapop/R")
-source("pop_projection.R")
+source("pop.projection.WB.R")
 
 #Eigen projectiemethode die beide matrices kan gebruiken
 pp_dens <- pop.projection.WB(G,G2,100,init_1_met,iterations=100)
