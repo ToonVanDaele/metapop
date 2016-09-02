@@ -28,13 +28,23 @@ public class MetaPopulation {
 //    private static ArrayList<ArrayList<Double>> adultSurvival;
 //    private static ArrayList<ArrayList<Double>> reproduction;
     private static int time;
-    private static int Tmax;
+    private static int Tmax; //= 1000;
     private static int numPop;
-    public static final int nestsize = 4;
-    public static final double reprProb = 0.5;
-    public static final int reprAge = 2;
-    public static final boolean extinctionLoop = true;
-    public static final boolean oneLoop = false;
+    private static int nestsize; // = 4;
+    private static double reprProb; // = 0.5;
+    private static int reprAge; // = 2;
+    private static boolean extinctionLoop;// = true;
+    private static boolean oneLoop;// = false;
+    private static String extinctionOutput;
+    private static String populationOutput;
+    private static String metaPopInput;
+    private static String patchAreaInput;
+    private static String migrationInput;
+    private static String juvSurvInput;
+//    private static String adSurvInput;
+//    private static String reproductionInput;
+    private static int[] initialAge;
+    private static double[] survival;
     
     /**
      * Performs one time step.
@@ -279,31 +289,37 @@ public class MetaPopulation {
      */
     public static void main(String[] args) {
         // Initialise some variables
-        Tmax = 1000;
-        double[] survival = new double[3];
-        survival[0] = 1;
-        survival[1] = 0.3;
-        survival[2] = 0.7;
-        createPatchAreas("patches.txt");
-        numPop = patchAreas.size();
-        createMigrationMat("markov_transition.txt");
-        try {
-            juvSurvival = fillJuvenileSurvival("juvSurvival.txt");
-//            adultSurvival = fillAdultSurvival("adultSurvival.txt");
-//            reproduction = fillReproduction("adultSurvival.txt");
-        } catch (IOException ex) {
-            System.out.println("Wrong input format");
+        if(args.length == 0){
+            survival = new double[3];
+            survival[0] = 1;
+            survival[1] = 0.3;
+            survival[2] = 0.7;
+            patchAreaInput = "patches.txt";
+            createPatchAreas(patchAreaInput);
+            numPop = patchAreas.size();
+            migrationInput = "markov_transition.txt";
+            createMigrationMat(migrationInput);
+            juvSurvInput = "juvSurvival.txt";
+            try {
+                juvSurvival = fillJuvenileSurvival(juvSurvInput);
+//              adultSurvival = fillAdultSurvival("adultSurvival.txt");
+//              reproduction = fillReproduction("adultSurvival.txt");
+            } catch (IOException ex) {
+                System.out.println("Wrong input format");
+            }
+
+            // Initialise metapopulation
+            initialAge = new int[3];
+            initialAge[2] = 5;
+            
+            populationOutput = "output.txt";
+            extinctionOutput = "extinctionTime_noCorr.txt";
         }
-
-        // Initialise metapopulation
-        int[] initialAge = new int[3];
-        initialAge[2] = 5;
-
-        // Start simulation and write out information to the file output.txt
+            // Start simulation and write out information to the file output.txt
         try {
             if (extinctionLoop) {
-                PrintWriter w1 = new PrintWriter(new BufferedWriter(new FileWriter("output.txt")));
-                PrintWriter w2 = new PrintWriter(new BufferedWriter(new FileWriter("extinctionTime_noCorr.txt")));
+                PrintWriter w1 = new PrintWriter(new BufferedWriter(new FileWriter(populationOutput)));
+                PrintWriter w2 = new PrintWriter(new BufferedWriter(new FileWriter(extinctionOutput)));
                 w1.println("run, timestep, patch, ID, age, sex");
                 for (int i = 0; i < 500; i++) {
                     initializeMetaPop(reprAge, survival, nestsize, reprProb, initialAge);
@@ -317,7 +333,7 @@ public class MetaPopulation {
                 w2.close();
             }
             if (oneLoop) {
-                PrintWriter w1 = new PrintWriter(new BufferedWriter(new FileWriter("output.txt")));
+                PrintWriter w1 = new PrintWriter(new BufferedWriter(new FileWriter(populationOutput)));
                 w1.println("timestep, patch, ID, age, sex"); ///Header
                 initializeMetaPop(reprAge, survival, nestsize, reprProb, initialAge);
                 for (Populatie pop : metaPopulatie) {
