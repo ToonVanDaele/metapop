@@ -6,3 +6,4 @@
 *.pdf
 *.csv
 *.emf
+/MetaPopulation/nbproject/private/
