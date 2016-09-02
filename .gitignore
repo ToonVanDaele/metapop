@@ -7,3 +7,4 @@
 *.csv
 *.emf
 /MetaPopulation/nbproject/private/
+/MetaPopulation/build/

@@ -37,7 +37,6 @@ public class MetaPopulation {
     private static boolean oneLoop;// = false;
     private static String extinctionOutput;
     private static String populationOutput;
-    private static String metaPopInput;
     private static String patchAreaInput;
     private static String migrationInput;
     private static String juvSurvInput;
@@ -288,34 +287,44 @@ public class MetaPopulation {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        // Initialise some variables
+        // Initialise default values if no args are given
+        // This uses the standard dispersion matrix and patch areas of the 'snakes'-based example 
+        //and a stochastic juvenile survival based on no correlation.
         if(args.length == 0){
+            Tmax = 1000;
+            extinctionLoop = true;
+            oneLoop=false;
+            nestsize = 3;
+            reprAge = 2;
+            reprProb = 0.5;
             survival = new double[3];
             survival[0] = 1;
-            survival[1] = 0.3;
-            survival[2] = 0.7;
-            patchAreaInput = "patches.txt";
-            createPatchAreas(patchAreaInput);
-            numPop = patchAreas.size();
-            migrationInput = "markov_transition.txt";
-            createMigrationMat(migrationInput);
-            juvSurvInput = "juvSurvival.txt";
-            try {
-                juvSurvival = fillJuvenileSurvival(juvSurvInput);
-//              adultSurvival = fillAdultSurvival("adultSurvival.txt");
-//              reproduction = fillReproduction("adultSurvival.txt");
-            } catch (IOException ex) {
-                System.out.println("Wrong input format");
-            }
-
-            // Initialise metapopulation
+            survival[1] = 0.5;
+            survival[2] = 0.8;
             initialAge = new int[3];
             initialAge[2] = 5;
-            
+            patchAreaInput = "patches_default.txt";
+            migrationInput = "markov_transition_default.txt";
+            juvSurvInput = "juvSurvival_default.txt";
+//            adSurvInput = "adultSurvival.txt";
+//            reproductionInput = "adultSurvival.txt";
             populationOutput = "output.txt";
             extinctionOutput = "extinctionTime_noCorr.txt";
         }
-            // Start simulation and write out information to the file output.txt
+        
+        //Initialise everything that doesn't need user-input/default values
+        createPatchAreas(patchAreaInput);
+        numPop = patchAreas.size();
+        createMigrationMat(migrationInput);
+        try {
+            juvSurvival = fillJuvenileSurvival(juvSurvInput);
+//            adultSurvival = fillAdultSurvival(adSurvInput);
+//            reproduction = fillReproduction(reproductionInput);
+        } catch (IOException ex) {
+            System.out.println("Wrong input format");
+        }
+        
+        // Start simulation and write out information to the file output.txt
         try {
             if (extinctionLoop) {
                 PrintWriter w1 = new PrintWriter(new BufferedWriter(new FileWriter(populationOutput)));
