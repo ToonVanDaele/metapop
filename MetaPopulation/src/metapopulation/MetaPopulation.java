@@ -307,7 +307,7 @@ public class MetaPopulation {
             migrationInput = "markov_transition_default.txt";
             juvSurvInput = "juvSurvival_default.txt";
 //            adSurvInput = "adultSurvival.txt";
-//            reproductionInput = "adultSurvival.txt";
+//            reproductionInput = "reproduction.txt";
             populationOutput = "output.txt";
             extinctionOutput = "extinctionTime_noCorr.txt";
         }
