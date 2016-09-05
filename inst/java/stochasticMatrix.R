@@ -1,13 +1,20 @@
 #### Generate matrix with stochastic values for survival and reproduction
 library(popbio)
-setwd("/Users/Aranka/NetBeansProjects/MetaPopulationSim")
+setwd("/Users/Aranka/NetBeansProjects/MetaPopulation/MetaPopulation")
 set.seed(420)
+
+### Initial information + output
 tmax <- 1000
-numpop<-6
-printinfo <- c(tmax,numpop)
-names(printinfo) <- c("tmax","numpop")
-printinfo
-write.table(printinfo, "juvSurvival.txt",col.names = FALSE)
+numpop <- 6
+stages <- 2
+stochasticity <- c(T,F,F)
+names(stochasticity) <- c("Juvenile Survival", "Adult Survival", "Reproduction")
+printinfo <- c(tmax,numpop, stages)
+names(printinfo) <- c("tmax","numpop","stages")
+printinfo <- c(printinfo, stochasticity)
+write.table(printinfo, "stochSurvival.txt",col.names = FALSE)
+
+### Generate matrices
 np <- 3*numpop
 vrs <- matrix(c(2,4,6),np,tmax)
 vrmeans <- rep(c(0.5,0.8,0.5),np)
@@ -51,11 +58,14 @@ for(t in 1:tmax){
 }
 
 output <- list("JuvSurvival"= vrs[(3*(1:numpop)-2),],"AdultSurvival" = vrs[(3*(1:numpop)-1),],"Reproduction" = vrs[(3*(1:numpop)),])
-output$JuvSurvival
-output$AdultSurvival
-output$Reproduction
-output
 
-write.table(output$JuvSurvival, "juvSurvival.txt",row.names = FALSE, col.names = FALSE, append = TRUE)
-write.table(output$AdultSurvival, "adultSurvival.txt",row.names = FALSE, col.names = FALSE)
-write.table(output$Reproduction, "reproduction.txt",row.names = FALSE, col.names = FALSE)
+### Print out matrices
+if(stochasticity[1]){
+  write.table(output$JuvSurvival, "stochSurvival.txt",row.names = FALSE, col.names = FALSE, append = TRUE)
+}
+if(stochasticity[2]){
+  write.table(output$AdultSurvival, "stochSurvival.txt",row.names = FALSE, col.names = FALSE, append = TRUE)
+}
+if(stochasticity[3]){
+  write.table(output$Reproduction, "stochSurvival.txt",row.names = FALSE, col.names = FALSE, append = TRUE)
+}
