@@ -8,7 +8,7 @@ tmax <- 1000
 numpop <- 6
 stages <- 2
 stochasticity <- c(T,F,F)
-names(stochasticity) <- c("Juvenile Survival", "Adult Survival", "Reproduction")
+names(stochasticity) <- c("Juvenile_Survival", "Adult_Survival", "Reproduction")
 printinfo <- c(tmax,numpop, stages)
 names(printinfo) <- c("tmax","numpop","stages")
 printinfo <- c(printinfo, stochasticity)
