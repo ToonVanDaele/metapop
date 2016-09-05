@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 /**
@@ -227,7 +228,6 @@ public class MetaPopulation {
             for (Populatie pop : metaPopulatie) {
                 pop.printCsvPop(w, time);
             }
-            System.out.println(time);
             time++;
         }
     }
@@ -320,6 +320,56 @@ public class MetaPopulation {
             stochInput = "juvSurvival_default.txt";
             populationOutput = "output.txt";
             extinctionOutput = "extinctionTime_noCorr.txt";
+        }
+        if(args.length == 1){
+            if(args[0].contains(".txt")){
+                File file = new File(args[0]);
+                try{
+                    Scanner read = new Scanner(file);
+                    tMax = read.nextInt();
+                    extinctionLoop = (read.next().equals("T"));
+                    oneLoop = (read.next().equals("T"));
+                    nestsize = read.nextInt();
+                    reprAge = read.nextInt();
+                    reprProb = read.nextDouble();
+                    String surv = read.next();
+                    String[] survs = surv.split(";");
+                    stages = survs.length;
+                    survival = new double[stages+1];
+                    survival[0] = 1;
+                    for(int i=1;i<=stages;i++){
+                        survival[i] = Double.parseDouble(survs[i-1]);
+                    }
+                    String age = read.next();
+                    String[] ages = age.split(";");
+                    initialAge = new int[ages.length+1];
+                    initialAge[0] = 0;
+                    for(int i=1;i<=ages.length;i++){
+                        initialAge[i] = Integer.decode(ages[i-1]);
+                    }
+                    patchAreaInput = read.next();
+                    migrationInput = read.next();
+                    stochInput = read.next();
+                    if(read.hasNext()){
+                        populationOutput = read.next();
+                    }else{
+                        populationOutput = "Evolution.txt";
+                    }
+                    if(read.hasNext()){
+                        extinctionOutput = read.next();
+                    }else{
+                        extinctionOutput = "ExtinctionTimes.txt";
+                    }
+                }catch(FileNotFoundException ex){
+                    System.out.println("The file " + args[0] + " was not found");
+                }catch(NoSuchElementException ex2){
+                    System.out.println("Your file does not contain enough inputdata");
+                }
+            }else{
+                System.out.println("Please enter the name of a .txt file with all the required information in the following order:");
+                System.out.println("tMax(int) extinctionLoop(T/F) oneLoop(T/F) nestsize(int) reproductiveAge(int) reproductiveProb(double) survivalProb(double;double;...;double) initialAgeDistr(int;int;...;int) patchAreaInput(Strings) migrationInput(String) stochasticityInput(String) output1(String) output2(String)");
+                System.out.println("The last five Strings should be names of .txt files, the outputnames are optional");
+            }
         }
         
         //Initialise everything that doesn't need user-input/default values
