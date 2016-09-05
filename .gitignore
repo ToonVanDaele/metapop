@@ -8,3 +8,4 @@
 *.emf
 /MetaPopulation/nbproject/private/
 /MetaPopulation/build/
+.DS_Store
