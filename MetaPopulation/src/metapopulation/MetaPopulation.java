@@ -24,12 +24,12 @@ public class MetaPopulation {
     private static ArrayList<Populatie> metaPopulatie;
     private static ArrayList<Double> patchAreas;
     private static ArrayList<Double[]> migration;
-    private static ArrayList<ArrayList<Double>> juvSurvival;
-//    private static ArrayList<ArrayList<Double>> adultSurvival;
-//    private static ArrayList<ArrayList<Double>> reproduction;
+    private static ArrayList<ArrayList<ArrayList<Double>>> stochSurvival;
+    private static ArrayList<ArrayList<Double>> reproduction;
     private static int time;
-    private static int Tmax; //= 1000;
+    private static int tMax; //= 1000;
     private static int numPop;
+    private static int stages;
     private static int nestsize; // = 4;
     private static double reprProb; // = 0.5;
     private static int reprAge; // = 2;
@@ -39,11 +39,10 @@ public class MetaPopulation {
     private static String populationOutput;
     private static String patchAreaInput;
     private static String migrationInput;
-    private static String juvSurvInput;
-//    private static String adSurvInput;
-//    private static String reproductionInput;
+    private static String stochInput;
     private static int[] initialAge;
     private static double[] survival;
+    private static boolean[] stochasticity;
     
     /**
      * Performs one time step.
@@ -71,86 +70,80 @@ public class MetaPopulation {
     }
 
     /**
-     * Fills a matrix with stochastic juvenile survival values for each patch and each
-     * timestep.
+     * Fills a matrix with stochastic survival values for each patch and each
+     * time step, for all Stages.
      *
      * @param inputFile the name of the .txt file with the wanted values
      * This file looks as follows: 
      * "tmax"  value
      * "numpop"  value
+     * "stages" value
+     * "NameOfFirstStage" 0/1
+     * ...
+     * "NameOfLastStage" 0/1
+     * "Reproduction" 0/1
      * all juvenile survival values (one row per patch, one column per time step)
      * @return a nested ArrayList that represents a matrix of doubles
      * @throws IOException when the inputFile does not have the correct layout.
      */
-    private static ArrayList<ArrayList<Double>> fillJuvenileSurvival(String inputFile) throws IOException {
-        ArrayList<ArrayList<Double>> juvSurv = new ArrayList<>();
+    private static void fillStochasticMatrices(String inputFile) throws IOException {
+        stochSurvival = new ArrayList<>();
         File file3 = new File(inputFile);
         try {
             Scanner input = new Scanner(file3);
-            for (int m = 1; m <= 2; m++) {
+            for (int m = 0; m < 3; m++) {
                 String in1 = input.next();
                 if (in1.equals("\"tmax\"")) {
-                    Tmax = input.nextInt();
+                    tMax = input.nextInt();
                 } else {
                     if (in1.equals("\"numpop\"")) {
                         numPop = input.nextInt();
                     } else {
-                        throw new IOException();
+                        if(in1.equals("\"stages\"")){
+                            stages = input.nextInt();
+                        }else{
+                            throw new IOException();
+                        }
                     }
                 }
             }
-            for (int i = 0; i < numPop; i++) {
-                juvSurv.add(i, new ArrayList<>());
-                for (int j = 0; j < Tmax; j++) {
-                    double d = input.nextDouble();
-                    juvSurv.get(i).add(j, d);
+            String check = "";
+            stochasticity = new boolean[stages+1];
+            int j=0;
+            while(!check.equals("\"Reproduction\"") && j<stages+1){
+               check = input.next();
+               int yn = input.nextInt();
+               stochasticity[j] = (yn==1);
+               j++;
+            }
+            for(int k=0; k<stages;k++){
+                if(stochasticity[k]){
+                    ArrayList<ArrayList<Double>> stageSurv = new ArrayList<>();
+                    for (int i = 0; i < numPop; i++) {
+                        stageSurv.add(i, new ArrayList<>());
+                        for (int l = 0; l < tMax; l++) {
+                            double d = input.nextDouble();
+                            stageSurv.get(i).add(l, d);
+                        }
+                    }
+                    stochSurvival.add(k, stageSurv);
+                }else{
+                    stochSurvival.add(k, null);
                 }
             }
-        } catch (FileNotFoundException ex) {
-            System.out.println("File not found");
-        }
-        return juvSurv;
-    }
-    /**
-     * Same functionality as fillJuvenileSurvival
-     * @param inputFile The name of the input file. 
-     * This file only contains the survival values (one row per patch and one column per time step)
-     * @return A matrix with the adult survival values (nested ArrayList)
-     */
-    private static ArrayList<ArrayList<Double>> fillAdultSurvival(String inputFile) {
-        ArrayList<ArrayList<Double>> adultSurv = new ArrayList<>();
-        File file4 = new File(inputFile);
-        try {
-            Scanner input = new Scanner(file4);
-            for (int i = 0; i < numPop; i++) {
-                adultSurv.add(i, new ArrayList<>());
-                for (int j = 0; j < Tmax; j++) {
-                    double d = input.nextDouble();
-                    adultSurv.get(i).add(j, d);
-                }
+            if(stochasticity[stages]){
+                reproduction = new ArrayList<>();
+                for (int i = 0; i < numPop; i++) {
+                        reproduction.add(i, new ArrayList<>());
+                        for (int l = 0; l < tMax; l++) {
+                            double d = input.nextDouble();
+                            reproduction.get(i).add(l, d);
+                        }
+                    }
             }
         } catch (FileNotFoundException ex) {
-            System.out.println("File not found");
+            System.out.println("Stochasticity File not found");
         }
-        return adultSurv;
-    }
-
-    private static ArrayList<ArrayList<Double>> fillReproduction(String inputFile) {
-        ArrayList<ArrayList<Double>> repr = new ArrayList<>();
-        File file5 = new File(inputFile);
-        try {
-            Scanner input = new Scanner(file5);
-            for (int i = 0; i < numPop; i++) {
-                repr.add(i, new ArrayList<>());
-                for (int j = 0; j < Tmax; j++) {
-                    double d = input.nextDouble();
-                    repr.get(i).add(j, d);
-                }
-            }
-        } catch (FileNotFoundException ex) {
-            System.out.println("File not found");
-        }
-        return repr;
     }
 
     /**
@@ -172,14 +165,14 @@ public class MetaPopulation {
                 input.nextLine();
             }
         } catch (FileNotFoundException ex) {
-            System.out.println("File not found");
+            System.out.println("Patch Area File not found");
         }
     }
 
     /**
      * Reads a file with dispersion probabilities and stores them in a nested
      * ArrayList.
-     * @param dispersal A txt file with the dispersal chances.
+     * @param dispersal A .txt file with the dispersal chances.
      */
     private static void createMigrationMat(String dispersal) {
         migration = new ArrayList<>();
@@ -200,7 +193,7 @@ public class MetaPopulation {
                 j++;
             }
         } catch (FileNotFoundException ex) {
-            System.out.println("File not found");
+            System.out.println("Migration File not found");
         }
     }
     
@@ -209,20 +202,25 @@ public class MetaPopulation {
      * @param w a PrintWriter that will write out the information in the meta-population after the loop is finished
      */
     public static void loop(PrintWriter w) {
-        while (time < Tmax) {
-//            for(Populatie pop : metaPopulatie){
-//                int popnum = pop.getPatchNr();
-//                double v = reproduction.get(popnum).get(time-1);
-//                double[] o = new double[3];
-//                o[0] = 1;
-//                o[1] = juvSurvival.get(popnum).get(time-1);
-//                o[2] = adultSurvival.get(popnum).get(time-1);
-//                pop.restore(v,o);
-//            }
+        while (time < tMax) {
             for (Populatie pop : metaPopulatie) {
                 int popnum = pop.getPatchNr();
-                double o = juvSurvival.get(popnum).get(time - 1);
-                pop.setJuvSurvival(o);
+                double v;
+                if(stochasticity[stages]){
+                    v = reproduction.get(popnum).get(time-1);
+                }else{
+                    v = reprProb;
+                }
+                double[] o = new double[stages + 1];
+                o[0] = 1;
+                for(int i=0;i<stages;i++){
+                    if(stochasticity[i]){
+                        o[i+1] = stochSurvival.get(i).get(popnum).get(time - 1);
+                    }else{
+                        o[i+1] = survival[i+1];
+                    }
+                }
+                pop.restore(v,o);
             }
             timeStep();
             /// Print out info for the timestep
@@ -241,12 +239,26 @@ public class MetaPopulation {
      */
     public static void extinctionLoop(PrintWriter w1, PrintWriter w2, int run) {
         int totalPop = 1;
-        while (time < Tmax) {
+        while (time < tMax) {
             totalPop = 0;
             for (Populatie pop : metaPopulatie) {
                 int popnum = pop.getPatchNr();
-                double o = juvSurvival.get(popnum).get(time - 1);
-                pop.setJuvSurvival(o);
+                double v;
+                if(stochasticity[stages]){
+                    v = reproduction.get(popnum).get(time-1);
+                }else{
+                    v = reprProb;
+                }
+                double[] o = new double[stages + 1];
+                o[0] = 1;
+                for(int i=0;i<stages;i++){
+                    if(stochasticity[i]){
+                        o[i+1] = stochSurvival.get(i).get(popnum).get(time - 1);
+                    }else{
+                        o[i+1] = survival[i+1];
+                    }
+                }
+                pop.restore(v,o);
             }
             timeStep();
             for (Populatie pop : metaPopulatie) {
@@ -291,7 +303,7 @@ public class MetaPopulation {
         // This uses the standard dispersion matrix and patch areas of the 'snakes'-based example 
         //and a stochastic juvenile survival based on no correlation.
         if(args.length == 0){
-            Tmax = 1000;
+            tMax = 1000;
             extinctionLoop = true;
             oneLoop=false;
             nestsize = 3;
@@ -305,9 +317,7 @@ public class MetaPopulation {
             initialAge[2] = 5;
             patchAreaInput = "patches_default.txt";
             migrationInput = "markov_transition_default.txt";
-            juvSurvInput = "juvSurvival_default.txt";
-//            adSurvInput = "adultSurvival.txt";
-//            reproductionInput = "reproduction.txt";
+            stochInput = "juvSurvival_default.txt";
             populationOutput = "output.txt";
             extinctionOutput = "extinctionTime_noCorr.txt";
         }
@@ -317,9 +327,7 @@ public class MetaPopulation {
         numPop = patchAreas.size();
         createMigrationMat(migrationInput);
         try {
-            juvSurvival = fillJuvenileSurvival(juvSurvInput);
-//            adultSurvival = fillAdultSurvival(adSurvInput);
-//            reproduction = fillReproduction(reproductionInput);
+            fillStochasticMatrices(stochInput);
         } catch (IOException ex) {
             System.out.println("Wrong input format");
         }
