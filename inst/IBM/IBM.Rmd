@@ -63,3 +63,7 @@ if(correlation.onlyStoch){
 }
 stochMatrix(seed=seed, tmax = tmax, Npop= nPop, stages = nStages, stages.names = stages.names, stochasticity = stochasticity, survivalM = survivalChance, survivalVAR = survivalVar, reproductionM = reproductiveChance, reproductionVAR = reproductiveVar, corrMat = corrMat, output.stoch = output.stoch)
 ```
+
+```{r RunJava}
+system(paste("cp ~/NetBeansProjects/MetaPopulation/inst/java/MetaPopulation/src/metapopulation/*.java", getwd()))
+```

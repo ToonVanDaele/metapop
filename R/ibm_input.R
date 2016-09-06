@@ -43,7 +43,18 @@ corrMatrix <- function(npar, npop, correlation = F, stochasticity = NA){
   return(M)
 }
 
-stochMatrix <- function(seed = 420, tmax = 1000, Npop = 6, stages = 2, stages.names = c("Juvenile","Adult"), stochasticity = c(T,F,F), survivalM = c(0.5,0.8), survivalVAR = c(0.05,0), reproductionM = 0.5, reproductionVAR = 0, corrMat = diag(1,18,18), output.stoch = "stochSurvival.txt"){
+stochMatrix <- function(seed = 420, 
+                        tmax = 1000, 
+                        Npop = 6, 
+                        stages = 2, 
+                        stages.names = c("Juvenile","Adult"), 
+                        stochasticity = c(T,F,F), 
+                        survivalM = c(0.5,0.8), 
+                        survivalVAR = c(0.05,0), 
+                        reproductionM = 0.5, 
+                        reproductionVAR = 0, 
+                        corrMat = diag(1,18,18), 
+                        output.stoch = "stochSurvival.txt"){
   library(popbio)
   set.seed(seed)
   names <- paste0(stages.names[1],"_Survival")
