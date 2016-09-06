@@ -6,9 +6,9 @@
 *.pdf
 *.csv
 *.emf
-/MetaPopulation/nbproject/private/
-/MetaPopulation/build/
+inst/java/MetaPopulation/nbproject/private/
+inst/java/MetaPopulation/build/
 .DS_Store
-/MetaPopulation/src/metapopulation/classes/metapopulation/
-/MetaPopulation/src/metapopulation/Evolution.txt
-/MetaPopulation/src/metapopulation/ExtinctionTimes.txt
+inst/java/MetaPopulation/src/metapopulation/classes/
+inst/java/MetaPopulation/src/metapopulation/Evolution.txt
+inst/java/MetaPopulation/src/metapopulation/ExtinctionTimes.txt
