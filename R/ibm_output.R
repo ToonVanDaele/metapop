@@ -1,5 +1,4 @@
 EvolutionOutput <- function(tmax = 1000, nPop = 6, oneLoop = F, run = 0, java.out = "Evolution.txt", carying.cap = c(6,8,9,9,17,10)){
-  opar <- par()
   library(colorRamps)
   library(grDevices)
   if(oneLoop){
@@ -29,27 +28,25 @@ EvolutionOutput <- function(tmax = 1000, nPop = 6, oneLoop = F, run = 0, java.ou
       PerAge[i+1,k]<-sum(y[,"age"]==k)
     }
   }
-  plot(PerPatch[,1],type="l",col=1, xlim = c(0,t), main="Evolution of population size per patch")
-  l1 <- "Pop1"
+  par(mfrow=c(1,1))
+  plot(PerPatch[,1],type="l",col=1, xlim = c(0,tmax+tmax/10),ylim = c(0,(max(carying.cap)+nPop*5)), main="Evolution of population size per patch", ylab = "Number of individuals", xlab = "t")
+  l1 <- "Pop1 "
   for(i in 2:nPop){
     lines(PerPatch[,i],col=i)
-    l1 <- c(l1,paste0("Pop",i))
+    l1 <- c(l1,paste0("Pop",i," "))
   }
-  legend("top", legend = l1, fill = c(1:nPop), cex=0.8)
-  par(xpd=T, mar=par()$mar+c(0,0,0,4))
-  barplot(t(PerPatch), col=primary.colors(6), main = "Total number of individuals per patch, per year")
-  legend((t+21),5*nPop,legend=l1, cex=0.8, fill=primary.colors(nPop))
-  barplot(t(PerAge), col=primary.colors(maxAge), main = "Age division per year, sum of all patches")
-  legend((t+21),5*nPop,legend=c(1:maxAge),cex=0.8, fill=primary.colors(maxAge))
-  par(opar)
+  legend("topright", legend = l1, fill = c(1:nPop), cex=0.8, bty = "n")
+  barplot(t(PerPatch), col=primary.colors(6), xlim = c(0,tmax+tmax/5), main = "Total number of individuals per patch, per year", border=NA)
+  legend(x=(tmax+tmax/5),y=10*nPop,legend=l1, cex=0.8, fill=primary.colors(nPop), bty="n")
+  barplot(t(PerAge), col=primary.colors(maxAge), xlim = c(0,tmax+2*tmax/5), main = "Age division per year, sum of all patches", border=NA)
+  legend(x=tmax+tmax/5,y=maxAge*nPop,title = "Age", ncol=2, bty="n",legend=c(1:maxAge),cex=0.8, fill=primary.colors(maxAge))
   par(mfrow=c(nPop/2,2))
   for(i in 1:nPop){
-    barplot(t(PerPatchSex[[i]]), col=rainbow(2), main = paste("Patch",as.character(i)))
+    barplot(t(PerPatchSex[[i]]), legend.text = c("vrouw","man"), col=rainbow(2), main = paste("Patch",as.character(i)),  border=NA, args.legend = list(x= "topright",bty="n"))
     lines(K[(i),])
   }
-  legend(0,25,legend=c("vrouw","man"),cex=0.8,fill=rainbow(2), bty="n")
+  #legend(0,25,legend=c("vrouw","man"),cex=0.8,fill=rainbow(2), bty="n")
   par(mfrow=c(1,1))
-  par(opar) 
 }
 
 extinctionOutput <- function(){
