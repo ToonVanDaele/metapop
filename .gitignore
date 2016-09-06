@@ -7,9 +7,15 @@
 *.csv
 *.emf
 *.class
+.html
 inst/java/MetaPopulation/nbproject/private/
 inst/java/MetaPopulation/build/
 .DS_Store
 inst/java/MetaPopulation/src/metapopulation/classes/
 inst/java/MetaPopulation/src/metapopulation/Evolution.txt
 inst/java/MetaPopulation/src/metapopulation/ExtinctionTimes.txt
+inst/IBM/dispersion.txt
+inst/IBM/patches.txt
+inst/IBM/stochSurvival.txt
+inst/IBM/Evolution.txt
+inst/IBM/ExtinctionTimes.txt

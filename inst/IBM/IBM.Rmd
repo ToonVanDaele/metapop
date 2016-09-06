@@ -1,0 +1,65 @@
+---
+title: "IBM"
+author: "Aranka Steyaert"
+date: "6 September 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Een Individual based model
+Dit script voegt een aantal R-scripts, R-functies en ook een Java methode samen om zo vanuit de input van een aantal parameters als output het gedrag van een metapopulatie te simuleren.
+
+#### Input
+
+In deze R-code pas je de populatie-parameters aan indien nodig.
+```{r populatieparameters}
+seed = 420
+tmax = 500
+nPop = 6
+nStages = 2
+stages.names = c("Juvenile","Adult")
+maxAge = 20
+survivalChance = c(0.5,0.8)
+survivalVar = c(0.05,0)
+reproductiveChance = 0.5
+reproductiveVar = 0
+nOffspring = 3
+stochasticity = c(T,F,F)
+correlation = F
+correlation.onlyStoch = F
+```
+In dit stuk R-code kan je enkele parameters aanpassen die invloed hebben op de patches
+```{r patchparameters}
+mapsize = 1000
+dist_min = 200
+area_M = 2.5
+area_SD = 0.8
+disp = 500
+plotPatch = T
+stay = 100
+```
+
+Hier kan je namen van files aanpassen waaring tussentijdse of finale informatie zal opgeslagen worden.
+```{r filenamen}
+  output.patch = "patches.txt"
+  output.migration = "dispersion.txt"
+  output.stoch = "stochSurvival.txt"
+  output.population.evolution = "Evolution.txt"
+  output.population.extinction = "ExtinctionTimes.txt"
+```
+
+## Resultaten
+Dit script genereert patches, de migratiekansen en stochastische waarden voor de survival- en reproductieparameters indien nodig
+```{r genereer input, message=FALSE, warning=FALSE}
+source("~/NetBeansProjects/MetaPopulation/R/ibm_input.R")
+outputPatch(seed=seed, mapsize = mapsize, dist_min=dist_min, areaM = area_M, areaSD = area_SD, Npatch=nPop, disp = disp, plotG = plotPatch, stay = stay, output.patch = output.patch, output.migration = output.migration)
+if(correlation.onlyStoch){
+  corrMat = corrMatrix(npar = length(survivalChance)+1 , npop = nPop, correlation = correlation, stochasticity = stochasticity)
+}else{
+  corrMat = corrMatrix(npar = length(survivalChance)+1 , npop = nPop, correlation = correlation)
+}
+stochMatrix(seed=seed, tmax = tmax, Npop= nPop, stages = nStages, stages.names = stages.names, stochasticity = stochasticity, survivalM = survivalChance, survivalVAR = survivalVar, reproductionM = reproductiveChance, reproductionVAR = reproductiveVar, corrMat = corrMat, output.stoch = output.stoch)
+```
