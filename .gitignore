@@ -6,6 +6,7 @@
 *.pdf
 *.csv
 *.emf
+*.class
 inst/java/MetaPopulation/nbproject/private/
 inst/java/MetaPopulation/build/
 .DS_Store
