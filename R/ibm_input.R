@@ -52,7 +52,7 @@ stochMatrix <- function(seed = 420, tmax = 1000, Npop = 6, stages = 2, stages.na
   }
   names <- c(names,"Reproduction")
   names(stochasticity) <- names
-  printinfo <- c(tmax,numpop, stages)
+  printinfo <- c(tmax,Npop, stages)
   names(printinfo) <- c("tmax","numpop","stages")
   printinfo <- c(printinfo, stochasticity)
   write.table(printinfo, output.stoch,col.names = FALSE)
