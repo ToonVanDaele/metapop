@@ -322,8 +322,8 @@ public class MetaPopulation {
             patchAreaInput = "patches_default.txt";
             migrationInput = "markov_transition_default.txt";
             stochInput = "juvSurvival_default.txt";
-            populationOutput = "output.txt";
-            extinctionOutput = "extinctionTime_noCorr.txt";
+            populationOutput = "Evolution.txt";
+            extinctionOutput = "ExtinctionTimes.txt";
             initialised = true;
         }
         if (args.length == 1) {
