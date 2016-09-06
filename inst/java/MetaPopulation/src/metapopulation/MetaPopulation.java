@@ -433,7 +433,7 @@ public class MetaPopulation {
                     for (int i = 0; i < 500; i++) {
                         initializeMetaPop(reprAge, survival, nestsize, reprProb, initialAge);
                         for (Populatie pop : metaPopulatie) {
-                            pop.printCsvPop(w1, 0); /// Initial population sizes
+                            pop.printCsvPop(w1, 0,i); /// Initial population sizes
                         }
                         time = 1;
                         extinctionLoop(w1, w2, i);
