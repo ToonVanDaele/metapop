@@ -20,6 +20,29 @@ outputPatch<-function(seed=420,mapsize=1000,dist_min=200,areaM=2.5,areaSD=0.8,Np
   write.csv(probM, output.migration ,eol=",\n", row.names = FALSE, col.names = FALSE)
 }
 
+corrMatrix <- function(npar, npop, correlation = F, stochasticity = NA){
+  dim = npar*npop
+  if(!correlation){
+    M <- diag(1,dim,dim)
+  }else{
+    if(is.na(stochasticity[1])){
+      M <- matrix(1,dim,dim)
+    }else{
+      m <- (1*stochasticity)%*%t(1*stochasticity)
+      mu <- m
+      for(i in 2:npop){
+        mu <- cbind(mu,m)  
+      }
+      M <- mu
+      for(j in 2:npop){
+        M <- rbind(M,mu)
+      }
+      diag(M)<-1
+    }
+  }
+  return(M)
+}
+
 stochMatrix <- function(seed = 420, tmax = 1000, Npop = 6, stages = 2, stages.names = c("Juvenile","Adult"), stochasticity = c(T,F,F), survivalM = c(0.5,0.8), survivalVAR = c(0.05,0), reproductionM = 0.5, reproductionVAR = 0, corrMat = diag(1,18,18), output.stoch = "stochSurvival.txt"){
   library(popbio)
   set.seed(seed)
