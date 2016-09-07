@@ -55,8 +55,8 @@ Hier kan je namen van files aanpassen waaring tussentijdse of finale informatie 
 
 Geef hier aan wat voor run moet gebeuren: 1 run van `r tmax` tijdsstappen of 500 runs van `r tmax` tijdsstappen zodat ook extinctiekansen kunnen berekend worden.
 ```{r RunOpties}
-oneLoop <- T
-extinctionLoop <- F
+oneLoop <- F
+extinctionLoop <- T
 ```
 
 ## Resultaten
@@ -92,10 +92,19 @@ system(paste("cp ~/NetBeansProjects/MetaPopulation/inst/java/MetaPopulation/src/
 system("javac -cp jdistlib-0.4.4-bin.jar *.java -d classes")
 tmpfile = tempfile()
 command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", tmax, oneLoop, extinctionLoop, nOffspring, reproductive.age, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr), output.patch, output.migration, output.stoch, output.population.evolution, output.population.extinction,">",tmpfile)
-command
 system(command)
-cc<-read.table(tmpfile,header=FALSE)
+cc<-t(as.vector(read.table(tmpfile,header=FALSE)))
 ```
 
 #### Genereer wat output om resultaten te onderzoeken
 
+```{r Output, fig.width=10, fig.height=6}
+source("~/NetBeansProjects/MetaPopulation/R/ibm_output.R")
+if(oneLoop){
+  EvolutionOutput(tmax=tmax, nPop=nPop, java.out = output.population.evolution, carying.cap = cc)
+}
+if(extinctionLoop){
+  EvolutionOutput(tmax=tmax, nPop=nPop, java.out = output.population.evolution, oneLoop = F, carying.cap = cc)
+  ExtinctionOutput(tmax = tmax, java.out = output.population.extinction)
+}
+```

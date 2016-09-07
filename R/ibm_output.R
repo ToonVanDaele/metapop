@@ -1,4 +1,9 @@
-EvolutionOutput <- function(tmax = 1000, nPop = 6, oneLoop = T, run = 0, java.out = "Evolution.txt", carying.cap = c(6,8,9,9,17,10)){
+EvolutionOutput <- function(tmax = 1000, 
+                            nPop = 6, 
+                            oneLoop = T, 
+                            run = 0, 
+                            java.out = "Evolution.txt", 
+                            carying.cap = c(6,8,9,9,17,10)){
   library(colorRamps)
   library(grDevices)
   if(oneLoop){
@@ -49,8 +54,8 @@ EvolutionOutput <- function(tmax = 1000, nPop = 6, oneLoop = T, run = 0, java.ou
   par(mfrow=c(1,1))
 }
 
-ExtinctionOutput <- function(nrep = 500, tmax = 1000, java.output = "ExtinctionTimes.txt", lines=F, lines.col=2){
-  x <- read.csv(java.output)  
+ExtinctionOutput <- function(nrep = 500, tmax = 1000, java.out = "ExtinctionTimes.txt", lines=F, lines.col=2){
+  x <- read.csv(java.out)  
   runs <- rep(0,nrep)
   for(i in 0:(nrep-1)){
     if(nrow(x[x[,1]==i,])!=0){
