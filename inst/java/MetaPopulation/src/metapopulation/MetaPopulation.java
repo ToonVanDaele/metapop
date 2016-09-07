@@ -35,6 +35,7 @@ public class MetaPopulation {
     private static double reprProb; // = 0.5;
     private static int reprAge; // = 2;
     private static int maxAge;
+    private static int quasiExtinction;
     private static boolean extinctionLoop;// = true;
     private static boolean oneLoop;// = false;
     private static String extinctionOutput;
@@ -201,7 +202,9 @@ public class MetaPopulation {
      * meta-population after the loop is finished
      */
     public static void loop(PrintWriter w) {
-        while (time < tMax) {
+        boolean extinct = false;
+        while (time < tMax && !extinct) {
+            int totalPop = 0;
             for (Populatie pop : metaPopulatie) {
                 int popnum = pop.getPatchNr();
                 double v;
@@ -226,6 +229,15 @@ public class MetaPopulation {
             for (Populatie pop : metaPopulatie) {
                 pop.printCsvPop(w, time);
             }
+            for (Populatie pop : metaPopulatie) {
+                int[] popCount = pop.populationCount();
+                for (int i = 0; i < popCount.length; i++) {
+                    totalPop += popCount[i];
+                }
+            }
+            if (totalPop <= quasiExtinction) {
+                extinct = true;
+            }
             time++;
         }
     }
@@ -238,8 +250,9 @@ public class MetaPopulation {
      * @param run the number of the run that needs to be printed.
      */
     public static void extinctionLoop(PrintWriter w1, PrintWriter w2, int run) {
-        int totalPop = 1;
-        while (time < tMax) {
+        int totalPop;
+        boolean extinct = false;
+        while (time < tMax && !extinct) {
             totalPop = 0;
             for (Populatie pop : metaPopulatie) {
                 int popnum = pop.getPatchNr();
@@ -270,8 +283,9 @@ public class MetaPopulation {
                     totalPop += popCount[i];
                 }
             }
-            if (totalPop == 0) {
+            if (totalPop <= quasiExtinction) {
                 w2.println(run + ", " + time);
+                extinct = true;
             }
             time++;
         }
@@ -309,6 +323,7 @@ public class MetaPopulation {
         if (args.length == 0) {
             tMax = 1000;
             maxAge = 20;
+            quasiExtinction = 10;
             extinctionLoop = true;
             oneLoop = false;
             nestsize = 3;
@@ -337,6 +352,7 @@ public class MetaPopulation {
                     oneLoop = (oneLoopString.equals("T")|| oneLoopString.equalsIgnoreCase("TRUE"));
                     String extinctionLoopString = read.next();
                     extinctionLoop = (extinctionLoopString.equals("T")|| extinctionLoopString.equalsIgnoreCase("TRUE"));
+                    quasiExtinction = read.nextInt();
                     nestsize = read.nextInt();
                     reprAge = read.nextInt();
                     maxAge = read.nextInt();
@@ -377,41 +393,42 @@ public class MetaPopulation {
                 }
             } else {
                 System.out.println("Please enter the name of a .txt file with all the required information in the following order:");
-                System.out.println("tMax(int) oneLoop(T/F) extinctionLoop(T/F) nestsize(int) reproductiveAge(int) maximumAge(int) reproductiveProb(double) survivalProb(double;double;...;double) initialAgeDistr(int;int;...;int) patchAreaInput(Strings) migrationInput(String) stochasticityInput(String) output1(String) output2(String)");
+                System.out.println("tMax(int) oneLoop(T/F) extinctionLoop(T/F) quasiExtinctionBound(int) nestsize(int) reproductiveAge(int) maximumAge(int) reproductiveProb(double) survivalProb(double;double;...;double) initialAgeDistr(int;int;...;int) patchAreaInput(Strings) migrationInput(String) stochasticityInput(String) output1(String) output2(String)");
                 System.out.println("The last five Strings should be names of .txt files, the outputnames are optional");
             }
         }
-        if(args.length >= 12 && args.length <= 14){
+        if(args.length >= 13 && args.length <= 15){
             tMax = Integer.decode(args[0]);
             oneLoop = (args[1].equals("T")||args[1].equalsIgnoreCase("TRUE"));
             extinctionLoop = (args[2].equals("T")||args[2].equalsIgnoreCase("TRUE"));
-            nestsize = Integer.decode(args[3]);
-            reprAge = Integer.decode(args[4]);
-            maxAge = Integer.decode(args[5]);
-            reprProb = Double.parseDouble(args[6]);
-            String[] survs = args[7].split(";");
+            quasiExtinction = Integer.decode(args[3]);
+            nestsize = Integer.decode(args[4]);
+            reprAge = Integer.decode(args[5]);
+            maxAge = Integer.decode(args[6]);
+            reprProb = Double.parseDouble(args[7]);
+            String[] survs = args[8].split(";");
             stages = survs.length;
             survival = new double[stages + 1];
             survival[0] = 1;
             for (int i = 1; i <= stages; i++) {
                 survival[i] = Double.parseDouble(survs[i - 1]);
             }
-            String[] ages = args[8].split(";");
+            String[] ages = args[9].split(";");
             initialAge = new int[ages.length + 1];
             initialAge[0] = 0;
             for (int i = 1; i <= ages.length; i++) {
                 initialAge[i] = Integer.decode(ages[i - 1]);
             }
-            patchAreaInput = args[9];
-            migrationInput = args[10];
-            stochInput = args[11];
-            if (args.length==13) {
-                populationOutput = args[12];
+            patchAreaInput = args[10];
+            migrationInput = args[11];
+            stochInput = args[12];
+            if (args.length==14) {
+                populationOutput = args[13];
                 extinctionOutput = "ExtinctionTimes.txt";
             } else {
-                if (args.length==14) {
-                    populationOutput = args[12];
-                    extinctionOutput = args[13];
+                if (args.length==15) {
+                    populationOutput = args[13];
+                    extinctionOutput = args[14];
                 } else {
                     populationOutput = "Evolution.txt";
                     extinctionOutput = "ExtinctionTimes.txt";
