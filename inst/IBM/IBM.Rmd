@@ -22,10 +22,12 @@ nPop = 6
 nStages = 2
 stages.names = c("Juvenile","Adult")
 maxAge = 20
+initial.agedistr = c(0,5)
 survivalChance = c(0.5,0.8)
 survivalVar = c(0.05,0)
 reproductiveChance = 0.5
 reproductiveVar = 0
+reproductive.age = 2
 nOffspring = 3
 stochasticity = c(T,F,F)
 correlation = F
@@ -51,8 +53,16 @@ Hier kan je namen van files aanpassen waaring tussentijdse of finale informatie 
   output.population.extinction = "ExtinctionTimes.txt"
 ```
 
+Geef hier aan wat voor run moet gebeuren: 1 run van `r tmax` tijdsstappen of 500 runs van `r tmax` tijdsstappen zodat ook extinctiekansen kunnen berekend worden.
+```{r RunOpties}
+oneLoop <- T
+extinctionLoop <- F
+```
+
 ## Resultaten
-Dit script genereert patches, de migratiekansen en stochastische waarden voor de survival- en reproductieparameters indien nodig
+
+#### Input genereren
+Dit script genereert patches, de migratiekansen en stochastische waarden voor de survival- en reproductieparameters indien nodig.
 ```{r genereer input, message=FALSE, warning=FALSE}
 source("~/NetBeansProjects/MetaPopulation/R/ibm_input.R")
 outputPatch(seed=seed, mapsize = mapsize, dist_min=dist_min, areaM = area_M, areaSD = area_SD, Npatch=nPop, disp = disp, plotG = plotPatch, stay = stay, output.patch = output.patch, output.migration = output.migration)
@@ -64,6 +74,28 @@ if(correlation.onlyStoch){
 stochMatrix(seed=seed, tmax = tmax, Npop= nPop, stages = nStages, stages.names = stages.names, stochasticity = stochasticity, survivalM = survivalChance, survivalVAR = survivalVar, reproductionM = reproductiveChance, reproductionVAR = reproductiveVar, corrMat = corrMat, output.stoch = output.stoch)
 ```
 
+#### Java Scripts runnen
+
+```{r MakeDecentStrings, echo=FALSE}
+vector.to.String <- function(v, sep=";"){
+  vString = paste0("\"",v[1])
+  for(i in 2:length(v)){
+    vString <- paste(vString,v[i],sep=sep)
+  }
+  vString <- paste0(vString,"\"")
+  return(vString)
+}
+```
+
 ```{r RunJava}
 system(paste("cp ~/NetBeansProjects/MetaPopulation/inst/java/MetaPopulation/src/metapopulation/*.java", getwd()))
+system("javac -cp jdistlib-0.4.4-bin.jar *.java -d classes")
+tmpfile = tempfile()
+command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", tmax, oneLoop, extinctionLoop, nOffspring, reproductive.age, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr), output.patch, output.migration, output.stoch, output.population.evolution, output.population.extinction,">",tmpfile)
+command
+system(command)
+cc<-read.table(tmpfile,header=FALSE)
 ```
+
+#### Genereer wat output om resultaten te onderzoeken
+
