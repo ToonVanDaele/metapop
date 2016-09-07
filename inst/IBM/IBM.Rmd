@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
 ```
 
 ## Een Individual based model
@@ -26,6 +27,7 @@ nPop = 6
 nStages = 2
 stages.names = c("Juvenile","Adult")
 maxAge = 20
+quasiExtinctionBound = 10
 initial.agedistr = c(0,5)
 survivalChance = c(0.5,0.8)
 survivalVar = c(0.05,0)
@@ -96,8 +98,9 @@ pathString <- paste0(path,"MetaPopulation/inst/java/MetaPopulation/src/metapopul
 system(paste("cp",pathString, getwd()))
 system("javac -cp jdistlib-0.4.4-bin.jar *.java -d classes")
 tmpfile = tempfile()
-command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", tmax, oneLoop, extinctionLoop, nOffspring, reproductive.age, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr), output.patch, output.migration, output.stoch, output.population.evolution, output.population.extinction,">",tmpfile)
+command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", tmax, oneLoop, extinctionLoop, quasiExtinctionBound, nOffspring, reproductive.age, maxAge, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr), output.patch, output.migration, output.stoch, output.population.evolution, output.population.extinction,">",tmpfile)
 system(command)
+command
 cc<-t(as.vector(read.table(tmpfile,header=FALSE)))
 ```
 
