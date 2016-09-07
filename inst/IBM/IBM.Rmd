@@ -96,8 +96,9 @@ pathString <- paste0(path,"MetaPopulation/inst/java/MetaPopulation/src/metapopul
 system(paste("cp",pathString, getwd()))
 system("javac -cp jdistlib-0.4.4-bin.jar *.java -d classes")
 tmpfile = tempfile()
-command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", tmax, oneLoop, extinctionLoop, nOffspring, reproductive.age, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr), output.patch, output.migration, output.stoch, output.population.evolution, output.population.extinction,">",tmpfile)
+command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", tmax, oneLoop, extinctionLoop, nOffspring, reproductive.age, maxAge, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr), output.patch, output.migration, output.stoch, output.population.evolution, output.population.extinction,">",tmpfile)
 system(command)
+command
 cc<-t(as.vector(read.table(tmpfile,header=FALSE)))
 ```
 
