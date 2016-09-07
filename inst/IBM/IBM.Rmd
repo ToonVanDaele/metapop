@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
 ```
 
 ## Een Individual based model
@@ -60,8 +61,8 @@ Hier kan je namen van files aanpassen waaring tussentijdse of finale informatie 
 
 Geef hier aan wat voor run moet gebeuren: 1 run van `r tmax` tijdsstappen of 500 runs van `r tmax` tijdsstappen zodat ook extinctiekansen kunnen berekend worden.
 ```{r RunOpties}
-oneLoop <- F
-extinctionLoop <- T
+oneLoop <- T
+extinctionLoop <- F
 ```
 
 ## Resultaten
