@@ -1,4 +1,14 @@
-outputPatch<-function(seed=420,mapsize=1000,dist_min=200,areaM=2.5,areaSD=0.8,Npatch=6,disp=500, plotG=FALSE, stay = 100, output.patch = "patches.txt", output.migration = "markov_transition.txt")
+outputPatch<-function(seed=420,
+                      mapsize=1000,
+                      dist_min=200,
+                      areaM=2.5,
+                      areaSD=0.8,
+                      Npatch=6,
+                      disp=500, 
+                      plotG=FALSE, 
+                      stay = 100, 
+                      output.patch = "patches.txt", 
+                      output.migration = "markov_transition.txt")
 {
   library(MetaLandSim)
   library(dplyr)
