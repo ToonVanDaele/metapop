@@ -1,0 +1,115 @@
+---
+title: "IBM"
+author: "Aranka Steyaert"
+date: "6 September 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Een Individual based model
+Dit script voegt een aantal R-scripts, R-functies en ook een Java methode samen om zo vanuit de input van een aantal parameters als output het gedrag van een metapopulatie te simuleren.
+
+#### Input
+Geef hier de pathway in naar de overkoepelende MetaPopulation map.
+```{r Path}
+path = "~/NetBeansProjects/"
+```
+
+In deze R-code pas je de populatie-parameters aan indien nodig.
+```{r populatieparameters}
+seed = 420
+tmax = 500
+nPop = 6
+nStages = 2
+stages.names = c("Juvenile","Adult")
+maxAge = 20
+initial.agedistr = c(0,5)
+survivalChance = c(0.5,0.8)
+survivalVar = c(0.05,0)
+reproductiveChance = 0.5
+reproductiveVar = 0
+reproductive.age = 2
+nOffspring = 3
+stochasticity = c(T,F,F)
+correlation = F
+correlation.onlyStoch = F
+```
+In dit stuk R-code kan je enkele parameters aanpassen die invloed hebben op de patches
+```{r patchparameters}
+mapsize = 1000
+dist_min = 200
+area_M = 2.5
+area_SD = 0.8
+disp = 500
+plotPatch = T
+stay = 100
+```
+
+Hier kan je namen van files aanpassen waaring tussentijdse of finale informatie zal opgeslagen worden.
+```{r filenamen}
+  output.patch = "patches.txt"
+  output.migration = "dispersion.txt"
+  output.stoch = "stochSurvival.txt"
+  output.population.evolution = "Evolution.txt"
+  output.population.extinction = "ExtinctionTimes.txt"
+```
+
+Geef hier aan wat voor run moet gebeuren: 1 run van `r tmax` tijdsstappen of 500 runs van `r tmax` tijdsstappen zodat ook extinctiekansen kunnen berekend worden.
+```{r RunOpties}
+oneLoop <- T
+extinctionLoop <- F
+```
+
+## Resultaten
+
+#### Input genereren
+Dit script genereert patches, de migratiekansen en stochastische waarden voor de survival- en reproductieparameters indien nodig.
+```{r genereer input, message=FALSE, warning=FALSE}
+source(paste0(path,"MetaPopulation/R/ibm_input.R"))
+outputPatch(seed=seed, mapsize = mapsize, dist_min=dist_min, areaM = area_M, areaSD = area_SD, Npatch=nPop, disp = disp, plotG = plotPatch, stay = stay, output.patch = output.patch, output.migration = output.migration)
+if(correlation.onlyStoch){
+  corrMat = corrMatrix(npar = length(survivalChance)+1 , npop = nPop, correlation = correlation, stochasticity = stochasticity)
+}else{
+  corrMat = corrMatrix(npar = length(survivalChance)+1 , npop = nPop, correlation = correlation)
+}
+stochMatrix(seed=seed, tmax = tmax, Npop= nPop, stages = nStages, stages.names = stages.names, stochasticity = stochasticity, survivalM = survivalChance, survivalVAR = survivalVar, reproductionM = reproductiveChance, reproductionVAR = reproductiveVar, corrMat = corrMat, output.stoch = output.stoch)
+```
+
+#### Java Scripts runnen
+
+```{r MakeDecentStrings, echo=FALSE}
+vector.to.String <- function(v, sep=";"){
+  vString = paste0("\"",v[1])
+  for(i in 2:length(v)){
+    vString <- paste(vString,v[i],sep=sep)
+  }
+  vString <- paste0(vString,"\"")
+  return(vString)
+}
+```
+
+```{r RunJava}
+pathString <- paste0(path,"MetaPopulation/inst/java/MetaPopulation/src/metapopulation/*.java")
+system(paste("cp",pathString, getwd()))
+system("javac -cp jdistlib-0.4.4-bin.jar *.java -d classes")
+tmpfile = tempfile()
+command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", tmax, oneLoop, extinctionLoop, nOffspring, reproductive.age, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr), output.patch, output.migration, output.stoch, output.population.evolution, output.population.extinction,">",tmpfile)
+system(command)
+cc<-t(as.vector(read.table(tmpfile,header=FALSE)))
+```
+
+#### Genereer wat output om resultaten te onderzoeken
+
+```{r Output, fig.width=10, fig.height=6}
+source(paste0(path,"MetaPopulation/R/ibm_output.R"))
+if(oneLoop){
+  EvolutionOutput(tmax=tmax, nPop=nPop, java.out = output.population.evolution, carying.cap = cc)
+}
+if(extinctionLoop){
+  EvolutionOutput(tmax=tmax, nPop=nPop, java.out = output.population.evolution, oneLoop = F, carying.cap = cc)
+  ExtinctionOutput(tmax = tmax, java.out = output.population.extinction)
+}
+```
