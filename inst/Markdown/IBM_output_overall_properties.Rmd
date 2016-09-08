@@ -1,0 +1,139 @@
+---
+title: "ObsRMArk"
+author: "Toon Van Daele"
+date: "26 augustus 2016"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(MetaLandSim)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(pander)
+```
+
+
+```{r loading data}
+
+# Loading all population data
+# Output from IBM model
+
+df.pop <- read.csv2("c:/temp/output.txt", sep = ",")
+str(df.pop)
+summary(df.pop)
+```
+
+
+# Properties and parameters of the population
+
+Number of patches:  `r dplyr::n_distinct(df.pop$patch)`
+
+Number of timesteps: `r dplyr::n_distinct(df.pop$timestep)`
+
+Number of unique individuals:  `r dplyr::n_distinct(df.pop$ID)`
+
+
+## Number of individuals per patch by time (first 20 years)
+
+```{r number of individuals timeserie}
+#Number of individuals per patch by time (first 20 years)
+df.pop %>%
+  dplyr::filter(timestep <= 20) %>%
+  dplyr::group_by(patch, timestep) %>%
+  dplyr::count() %>%
+  ggplot(aes(x = timestep, y = n, colour = as.factor(patch))) +
+  geom_line()
+```
+
+## Total number of births per patch
+
+```{r results='asis'}
+df.pop %>%
+  dplyr::filter(age == 1) %>%
+  dplyr::group_by(patch) %>%
+  dplyr::count() %>%
+  pandoc.table()
+
+```
+
+## Cumulative number of births per patch
+
+```{r births per patch}
+df.pop %>%
+  dplyr::filter(age == 1) %>%
+  dplyr::group_by(patch, timestep) %>%
+  dplyr::count() %>%
+  dplyr::mutate(csum = cumsum(n)) %>%
+  ggplot(aes(x = timestep, y = csum, colour = as.factor(patch))) +
+           geom_line()
+
+```
+
+## Maximum age (age at dead) distribution
+
+```{r}
+
+df.maxAge <- df.pop %>%
+  dplyr::group_by(ID) %>%
+  dplyr::summarise(maxAge = max(age))
+
+ggplot(df.maxAge, aes(x = maxAge)) + geom_bar()
+
+```
+
+## Age distribution by time (first 20 years)
+
+(not yet included)
+
+
+## Number of migrated individuals
+
+(rows = patch at birth, columns = patch at dead)
+
+```{r results='asis'}
+df.temp2 <- df.maxAge %>%
+  left_join(df.pop, by = c("ID", "maxAge" = "age"))
+
+df.temp2$patchBirth <- as.integer(gsub("\\:.*","", df.temp2$ID))
+
+myTable <- table(df.temp2$patchBirth, df.temp2$patch)
+pandoc.table(myTable)
+
+```
+
+
+# Calculating the vital parameters for the full population
+
+## Survival rate adults
+
+```{r}
+S_ad <- vector(length = 90)
+for (i in 1:90) {
+  ad1 <- as.vector(df.pop[(df.pop$age > 2) & (df.pop$timestep == i), "ID"])
+  ad2 <- as.vector(df.pop[(df.pop$age > 2) & (df.pop$timestep == i + 1), "ID"])
+  S_ad[i] <- length(ad1[ad1 %in% ad2]) /  length(ad1)
+}
+
+mean(S_ad)
+plot(S_ad)
+```
+
+## Survival rate juveniles (survival first year)
+
+```{r}
+S_juv <- vector(length = 90)
+for (i in 1:90) {
+  juv1 <- as.vector(df.pop[(df.pop$age == 1) & (df.pop$timestep == i), "ID"])
+  juv2 <- as.vector(df.pop[(df.pop$age > 1) & (df.pop$timestep == i + 1), "ID"])
+  S_juv[i] <- length(juv1[juv1 %in% juv2]) /  length(juv1)
+}
+
+mean(S_juv)
+plot(S_juv)
+```
+
+
+
