@@ -1,0 +1,90 @@
+---
+title: "ObsMarkRecapture"
+author: "Toon Van Daele"
+date: "1 september 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(MetaLandSim)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(pander)
+library(RMark)
+```
+
+
+```{r loading data}
+
+# Loading all population data
+# Output from IBM model
+
+df.pop <- read.csv2("c:/temp/output.txt", sep = ",")
+str(df.pop)
+summary(df.pop)
+```
+
+
+# Properties and parameters of the population
+
+Number of patches:  `r dplyr::n_distinct(df.pop$patch)`
+
+Number of timesteps: `r dplyr::n_distinct(df.pop$timestep)`
+
+Number of unique individuals:  `r dplyr::n_distinct(df.pop$ID)`
+
+
+
+# Simple CJS observation proces
+
+- Constant detection probability (i.e. not dependent on time, density, patch, ...)
+
+- other assumptions...
+
+
+## Mark recapture properties CJS model
+
+```{r}
+p <- 0.8  # Detection probability
+
+EncTime <- c(20,21,22,23,24,25,26,27,28,29) # Encounter timesteps
+```
+
+Detection probability `r p`
+
+Encounter timesteps `r EncTime`
+
+
+```{r}
+
+df.EncHistFlat <- data.frame()
+
+for (i in EncTime) {
+  
+  df.mark <- df.pop %>%
+    dplyr::filter(timestep == i, age > 1) %>%
+    dplyr::sample_frac(p, replace = FALSE) %>%
+    select(timestep, ID)
+  df.mark$Occ <- 1
+  df.EncHistFlat <- rbind(df.EncHistFlat, df.mark)
+}
+
+str(df.EncHistFlat)
+
+df.EncHist <- df.EncHistFlat %>%
+  tidyr::spread(timestep, Occ, fill = 0) %>%
+  tidyr::unite(ch, 1:length(EncTime) + 1, sep = "") %>%
+  dplyr::select(ch)
+
+  
+df.EncHist
+
+CJS.Phidot.pdot <- mark(data = df.EncHist, threads=1)
+
+
+```
+
+
+

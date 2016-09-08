@@ -1,0 +1,28 @@
+---
+title: "ObsHanskiMetalandsim"
+author: "Toon Van Daele"
+date: "8 september 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(MetaLandSim)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(pander)
+library(RMark)
+```
+
+
+```{r loading data}
+
+# Loading all population data
+# Output from IBM model
+
+df.pop <- read.csv2("c:/temp/output.txt", sep = ",")
+str(df.pop)
+summary(df.pop)
+```
+

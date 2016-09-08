@@ -19,3 +19,7 @@ inst/IBM/patches.txt
 inst/IBM/stochSurvival.txt
 inst/IBM/Evolution.txt
 inst/IBM/ExtinctionTimes.txt
+*.vcv
+*.out
+*.inp
+*.res
