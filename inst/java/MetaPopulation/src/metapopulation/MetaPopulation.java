@@ -28,6 +28,7 @@ public class MetaPopulation {
     private static ArrayList<ArrayList<ArrayList<Double>>> stochSurvival;
     private static ArrayList<ArrayList<Double>> reproduction;
     private static int time;
+    private static int burnIn;
     private static int tMax; //= 1000;
     private static int numPop;
     private static int stages;
@@ -170,7 +171,7 @@ public class MetaPopulation {
      * Reads a file with dispersion probabilities and stores them in a nested
      * ArrayList.
      *
-     * @param dispersal A .txt file with the dispersal chances.
+     * @param dispersal The name of a .txt file with the dispersal chances.
      */
     private static void createMigrationMat(String dispersal) {
         migration = new ArrayList<>();
@@ -322,6 +323,7 @@ public class MetaPopulation {
         boolean initialised = false;
         if (args.length == 0) {
             tMax = 1000;
+            burnIn = 10;
             maxAge = 20;
             quasiExtinction = 10;
             extinctionLoop = true;
@@ -348,6 +350,7 @@ public class MetaPopulation {
                 try {
                     Scanner read = new Scanner(file);
                     tMax = read.nextInt();
+                    burnIn = read.nextInt();
                     String oneLoopString = read.next();
                     oneLoop = (oneLoopString.equals("T")|| oneLoopString.equalsIgnoreCase("TRUE"));
                     String extinctionLoopString = read.next();
@@ -393,42 +396,43 @@ public class MetaPopulation {
                 }
             } else {
                 System.out.println("Please enter the name of a .txt file with all the required information in the following order:");
-                System.out.println("tMax(int) oneLoop(T/F) extinctionLoop(T/F) quasiExtinctionBound(int) nestsize(int) reproductiveAge(int) maximumAge(int) reproductiveProb(double) survivalProb(double;double;...;double) initialAgeDistr(int;int;...;int) patchAreaInput(Strings) migrationInput(String) stochasticityInput(String) output1(String) output2(String)");
+                System.out.println("tMax(int) burnInTime(int) oneLoop(T/F) extinctionLoop(T/F) quasiExtinctionBound(int) nestsize(int) reproductiveAge(int) maximumAge(int) reproductiveProb(double) survivalProb(double;double;...;double) initialAgeDistr(int;int;...;int) patchAreaInput(Strings) migrationInput(String) stochasticityInput(String) output1(String) output2(String)");
                 System.out.println("The last five Strings should be names of .txt files, the outputnames are optional");
             }
         }
-        if(args.length >= 13 && args.length <= 15){
+        if(args.length >= 14 && args.length <= 16){
             tMax = Integer.decode(args[0]);
-            oneLoop = (args[1].equals("T")||args[1].equalsIgnoreCase("TRUE"));
-            extinctionLoop = (args[2].equals("T")||args[2].equalsIgnoreCase("TRUE"));
-            quasiExtinction = Integer.decode(args[3]);
-            nestsize = Integer.decode(args[4]);
-            reprAge = Integer.decode(args[5]);
-            maxAge = Integer.decode(args[6]);
-            reprProb = Double.parseDouble(args[7]);
-            String[] survs = args[8].split(";");
+            burnIn = Integer.decode(args[1]);
+            oneLoop = (args[2].equals("T")||args[2].equalsIgnoreCase("TRUE"));
+            extinctionLoop = (args[3].equals("T")||args[3].equalsIgnoreCase("TRUE"));
+            quasiExtinction = Integer.decode(args[4]);
+            nestsize = Integer.decode(args[5]);
+            reprAge = Integer.decode(args[6]);
+            maxAge = Integer.decode(args[7]);
+            reprProb = Double.parseDouble(args[8]);
+            String[] survs = args[9].split(";");
             stages = survs.length;
             survival = new double[stages + 1];
             survival[0] = 1;
             for (int i = 1; i <= stages; i++) {
                 survival[i] = Double.parseDouble(survs[i - 1]);
             }
-            String[] ages = args[9].split(";");
+            String[] ages = args[10].split(";");
             initialAge = new int[ages.length + 1];
             initialAge[0] = 0;
             for (int i = 1; i <= ages.length; i++) {
                 initialAge[i] = Integer.decode(ages[i - 1]);
             }
-            patchAreaInput = args[10];
-            migrationInput = args[11];
-            stochInput = args[12];
-            if (args.length==14) {
-                populationOutput = args[13];
+            patchAreaInput = args[11];
+            migrationInput = args[12];
+            stochInput = args[13];
+            if (args.length==15) {
+                populationOutput = args[14];
                 extinctionOutput = "ExtinctionTimes.txt";
             } else {
-                if (args.length==15) {
-                    populationOutput = args[13];
-                    extinctionOutput = args[14];
+                if (args.length==16) {
+                    populationOutput = args[14];
+                    extinctionOutput = args[15];
                 } else {
                     populationOutput = "Evolution.txt";
                     extinctionOutput = "ExtinctionTimes.txt";
@@ -455,7 +459,21 @@ public class MetaPopulation {
                     PrintWriter w2 = new PrintWriter(new BufferedWriter(new FileWriter(extinctionOutput)));
                     w1.println("run, timestep, patch, ID, age, sex");
                     for (int i = 0; i < 500; i++) {
-                        initializeMetaPop(maxAge, reprAge, survival, nestsize, reprProb, initialAge);
+                        boolean stable = false;
+                        while(!stable){
+                            initializeMetaPop(maxAge, reprAge, survival, nestsize, reprProb, initialAge);
+                            for (int j  = 0; j<burnIn; j++){
+                                timeStep();
+                            }
+                            int tot = 0;
+                            for (Populatie pop : metaPopulatie) {
+                                int[] popCount = pop.populationCount();
+                                    for (int j = 0; j < popCount.length; j++) {
+                                        tot += popCount[j];
+                                }  
+                            }
+                            stable = (tot>quasiExtinction);
+                        }
                         if(i==0){
                             patchAreas.stream().forEach((patch) -> {
                             System.out.println((Math.round(patch * 5)));
@@ -473,7 +491,21 @@ public class MetaPopulation {
                 if (oneLoop) {
                     PrintWriter w1 = new PrintWriter(new BufferedWriter(new FileWriter(populationOutput)));
                     w1.println("timestep, patch, ID, age, sex"); ///Header
-                    initializeMetaPop(maxAge, reprAge, survival, nestsize, reprProb, initialAge);
+                    boolean stable = false;
+                    while(!stable){
+                        initializeMetaPop(maxAge, reprAge, survival, nestsize, reprProb, initialAge);
+                        for (int j  = 0; j<burnIn; j++){
+                            timeStep();
+                        }
+                        int tot = 0;
+                        for (Populatie pop : metaPopulatie) {
+                            int[] popCount = pop.populationCount();
+                                for (int j = 0; j < popCount.length; j++) {
+                                    tot += popCount[j];
+                            }  
+                        }
+                        stable = (tot>quasiExtinction);
+                    }
                     patchAreas.stream().forEach((patch) -> {
                         System.out.println((Math.round(patch * 5)));
                     });
@@ -482,7 +514,7 @@ public class MetaPopulation {
                     }
                     time = 1;
                     loop(w1);
-                    w1.close();
+                    w1.close();              
                 }
             } catch (IOException ex) {
                 System.out.println("File not found");
@@ -492,7 +524,7 @@ public class MetaPopulation {
             System.out.println("Allowed input:");
             System.out.println("1. No input --> Default example");
             System.out.println("2. One name of a .txt file containing the same info as in 3.");
-            System.out.println("3. tMax(int) oneLoop(T/F) extinctionLoop(T/F) nestsize(int) reproductiveAge(int) maximutAge(int) reproductiveProb(double) survivalProb(double;double;...;double) initialAgeDistr(int;int;...;int) patchAreaInput(Strings) migrationInput(String) stochasticityInput(String) output1(String) output2(String)");
+            System.out.println("3. tMax(int) burnInTime(int) oneLoop(T/F) extinctionLoop(T/F) nestsize(int) reproductiveAge(int) maximutAge(int) reproductiveProb(double) survivalProb(double;double;...;double) initialAgeDistr(int;int;...;int) patchAreaInput(Strings) migrationInput(String) stochasticityInput(String) output1(String) output2(String)");
         }
     }
 

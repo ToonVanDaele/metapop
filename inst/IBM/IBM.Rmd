@@ -21,8 +21,9 @@ path = "~/NetBeansProjects/"
 
 In deze R-code pas je de populatie-parameters aan indien nodig.
 ```{r populatieparameters}
-seed = 420
-tmax = 500
+seed = 100
+tmax = 1000
+burnin.time = 15
 nPop = 6
 nStages = 2
 stages.names = c("Juvenile","Adult")
@@ -34,10 +35,10 @@ survivalVar = c(0.05,0)
 reproductiveChance = 0.5
 reproductiveVar = 0
 reproductive.age = 2
-nOffspring = 3
+nOffspring = 4
 stochasticity = c(T,F,F)
-correlation = F
-correlation.onlyStoch = F
+correlation = T
+correlation.onlyStoch = T
 ```
 In dit stuk R-code kan je enkele parameters aanpassen die invloed hebben op de patches
 ```{r patchparameters}
@@ -61,8 +62,8 @@ Hier kan je namen van files aanpassen waaring tussentijdse of finale informatie 
 
 Geef hier aan wat voor run moet gebeuren: 1 run van `r tmax` tijdsstappen of 500 runs van `r tmax` tijdsstappen zodat ook extinctiekansen kunnen berekend worden.
 ```{r RunOpties}
-oneLoop <- T
-extinctionLoop <- F
+oneLoop <- F
+extinctionLoop <- T
 ```
 
 ## Resultaten
@@ -98,7 +99,7 @@ pathString <- paste0(path,"MetaPopulation/inst/java/MetaPopulation/src/metapopul
 system(paste("cp",pathString, getwd()))
 system("javac -cp jdistlib-0.4.4-bin.jar *.java -d classes")
 tmpfile = tempfile()
-command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", tmax, oneLoop, extinctionLoop, quasiExtinctionBound, nOffspring, reproductive.age, maxAge, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr), output.patch, output.migration, output.stoch, output.population.evolution, output.population.extinction,">",tmpfile)
+command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", tmax, burnin.time, oneLoop, extinctionLoop, quasiExtinctionBound, nOffspring, reproductive.age, maxAge, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr), output.patch, output.migration, output.stoch, output.population.evolution, output.population.extinction,">",tmpfile)
 system(command)
 command
 cc<-t(as.vector(read.table(tmpfile,header=FALSE)))

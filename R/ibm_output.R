@@ -87,13 +87,13 @@ ExtinctionOutput <- function(nrep = 500, tmax = 1000, java.out = "ExtinctionTime
   for(i in 1:tmax){
     extinction[i]<-sum(runs[]==i)
   }
-  extCDF<-rep(0,tmax)
-  for(i in 1:tmax){
+  extCDF<-rep(0,tmax-1)
+  for(i in 1:tmax-1){
     extCDF[i] <- sum(extinction[1:i])/nrep
   }
   if(lines){
     lines(extCDF, col=lines.col)
   }else{
-    plot(extCDF, type="l", col=1, xlab = "t", ylab="extinction CDF")
+    plot(extCDF, type="l", col=1, xlab = "t", ylab="extinction CDF", ylim = c(0,1))
   }
 }
