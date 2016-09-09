@@ -12,7 +12,7 @@ library(plyr)
 library(dplyr)
 library(ggplot2)
 library(pander)
-library(RMark)
+library(MetaLandSim)
 ```
 
 
@@ -63,15 +63,27 @@ df.ObsFlat <- data.frame()
 
 for (i in v.Obs) {
   
-  df.Obs <- df.pop %>%
+  df.temp <- df.pop %>%
     dplyr::filter(timestep == i, age > 1) %>%
     dplyr::sample_frac(p, replace = FALSE) %>%
     dplyr::select(patch, timestep) %>%
     dplyr::count(patch) %>%
     cbind(i)
 
-  df.ObsFlat <- rbind(df.ObsFlat, df.Obs)
+  df.ObsFlat <- rbind(df.ObsFlat, df.temp)
 }
+
+str(df.ObsFlat)
+
+df.Obs <- df.ObsFlat %>%
+  dplyr::mutate(PA = min(n)) %>%
+  dplyr::select(patch, i, PA) %>%
+  tidyr::spread(i, PA, fill = 0)
+
+ data(occ.landscape) 
+ 
+ str(occ.landscape)
+parameter.estimate(sp, method, alpha = NULL, nsnap)
 
 
 ```
