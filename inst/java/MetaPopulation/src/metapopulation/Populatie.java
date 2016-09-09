@@ -55,6 +55,8 @@ public class Populatie {
      * Constructor for an instance of the class Populatie.
      * This constructor creates an instance with all necessary variables specified
      * @param maxAge the maximal age individuals in this population can reach before they die
+     * @param seed set a seed for the random generators
+     * @param indivPha The number of individuals that can live per ha
      * @param patchNr the ID of the patch this population represents
      * @param repAge the reproductive age
      * @param survChance an array with survival chances. Position i corresponds to age i
@@ -64,7 +66,7 @@ public class Populatie {
      * @param voortplanting the chance of mating in in one time-step
      * @param sexRatio the proportion males in the population
      */
-    public Populatie(int maxAge, int patchNr, int repAge, double[] survChance, double ha, int ccAge, int kinderen, double voortplanting, double sexRatio){
+    public Populatie(int maxAge, int seed, int indivPha, int patchNr, int repAge, double[] survChance, double ha, int ccAge, int kinderen, double voortplanting, double sexRatio){
         this.maxAge = maxAge;
         this.patchNr = patchNr;
         this.reproductiveAge = repAge;
@@ -72,7 +74,7 @@ public class Populatie {
         //this.stochOverlevingsKans = new double[repAge][2];
         this.inwoners = new TreeSet<>();
         this.ha = ha;
-        this.k = (int) Math.round(ha*5);
+        this.k = (int) Math.round(ha*indivPha);
         this.ccInfluenceAge = ccAge;
         //this.kSD = kSD;
         this.kinderen = kinderen;
@@ -80,7 +82,7 @@ public class Populatie {
         this.voortplanting = voortplanting;
         //this.stochVoortplanting = voortplantingSD;
         this.sexRatio = sexRatio;
-        this.rg = new Random(420*patchNr);
+        this.rg = new Random(seed*patchNr);
         this.idCounter = 1;
     }
     /**

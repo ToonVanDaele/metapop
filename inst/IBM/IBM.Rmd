@@ -21,11 +21,12 @@ path = "~/NetBeansProjects/"
 
 In deze R-code pas je de populatie-parameters aan indien nodig.
 ```{r populatieparameters}
-seed = 1993
+seed = 420
 tmax = 1000
 nIters = 200
 burnin.time = 15
 nPop = 6
+indiv.per.ha = 5
 nStages = 2
 stages.names = c("Juvenile","Adult")
 maxAge = 20
@@ -100,7 +101,7 @@ pathString <- paste0(path,"MetaPopulation/inst/java/MetaPopulation/src/metapopul
 system(paste("cp",pathString, getwd()))
 system("javac -cp jdistlib-0.4.4-bin.jar *.java -d classes")
 tmpfile = tempfile()
-command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", tmax, nIters, burnin.time, oneLoop, extinctionLoop, quasiExtinctionBound, nOffspring, reproductive.age, maxAge, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr), output.patch, output.migration, output.stoch, output.population.evolution, output.population.extinction,">",tmpfile)
+command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation",seed, tmax, nIters, burnin.time, oneLoop, extinctionLoop, quasiExtinctionBound, nOffspring, reproductive.age, maxAge, indiv.per.ha, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr), output.patch, output.migration, output.stoch, output.population.evolution, output.population.extinction,">",tmpfile)
 system(command)
 command
 cc<-t(as.vector(read.table(tmpfile,header=FALSE)))
@@ -123,13 +124,13 @@ if(extinctionLoop){
 source(paste0(path,"MetaPopulation/R/ibm_output.R"))
   extinctionLoop = TRUE
 correlation = F
-  command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", tmax, nIters, burnin.time, oneLoop, extinctionLoop, quasiExtinctionBound, nOffspring, reproductive.age, maxAge, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr), output.patch, output.migration, output.stoch, output.population.evolution, output.population.extinction,">",tmpfile)
+  command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", seed, tmax, nIters, burnin.time, oneLoop, extinctionLoop, quasiExtinctionBound, nOffspring, reproductive.age, maxAge, indiv.per.ha, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr), output.patch, output.migration, output.stoch, output.population.evolution, output.population.extinction,">",tmpfile)
 system(command)
 cc<-t(as.vector(read.table(tmpfile,header=FALSE)))
 ExtinctionOutput(nrep = nIters, tmax=tmax, java.out = output.population.extinction)
 correlation = T 
 correlation.onlyStoch = T
-  command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", tmax, nIters, burnin.time, oneLoop, extinctionLoop, quasiExtinctionBound, nOffspring, reproductive.age, maxAge, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr), output.patch, output.migration, output.stoch, output.population.evolution, output.population.extinction,">",tmpfile)
+  command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", seed, tmax, nIters, burnin.time, oneLoop, extinctionLoop, quasiExtinctionBound, nOffspring, reproductive.age, maxAge, indiv.per.ha, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr), output.patch, output.migration, output.stoch, output.population.evolution, output.population.extinction,">",tmpfile)
 system(command)
 ExtinctionOutput(nrep = nIters, tmax=tmax, java.out=output.population.extinction, lines=TRUE)
 legend("topleft",legend = c("No correlation","Correlation"),col = 1:2, fill = 1:2)

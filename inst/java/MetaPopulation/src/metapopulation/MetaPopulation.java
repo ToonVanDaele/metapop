@@ -27,6 +27,8 @@ public class MetaPopulation {
     private static ArrayList<Double[]> migration;
     private static ArrayList<ArrayList<ArrayList<Double>>> stochSurvival;
     private static ArrayList<ArrayList<Double>> reproduction;
+    private static int seed;
+    private static int indivPha;
     private static int time;
     private static int burnIn;
     private static int tMax; 
@@ -314,7 +316,7 @@ public class MetaPopulation {
     public static void initializeMetaPop(int maxAge, int reprAge, double[] survival, int nestsize, double reprProb, int[] initialAge) {
         metaPopulatie = new ArrayList<>();
         for (int i = 0; i < patchAreas.size(); i++) {
-            Populatie pop = new Populatie(maxAge, i, reprAge, survival, patchAreas.get(i), reprAge, nestsize, reprProb, 0.5);
+            Populatie pop = new Populatie(maxAge,seed, indivPha, i, reprAge, survival, patchAreas.get(i), reprAge, nestsize, reprProb, 0.5);
             pop.initialPopulation(initialAge);
             metaPopulatie.add(i, pop);
         }
@@ -322,7 +324,7 @@ public class MetaPopulation {
 
     /**
      * @param args the command line arguments
-     * Form: tMax(int) burnInTime(int) oneLoop(T/F) extinctionLoop(T/F) nestsize(int) reproductiveAge(int) maximutAge(int) reproductiveProb(double) survivalProb(double;double;...;double) initialAgeDistr(int;int;...;int) patchAreaInput(Strings) migrationInput(String) stochasticityInput(String) output1(String) output2(String)"
+     * Contains: seed(int) tMax(int) burnInTime(int) oneLoop(T/F) extinctionLoop(T/F) nestsize(int) reproductiveAge(int) maximutAge(int) maxIndivPerHa(int) reproductiveProb(double) survivalProb(double;double;...;double) initialAgeDistr(int;int;...;int) patchAreaInput(Strings) migrationInput(String) stochasticityInput(String) output1(String) output2(String)"
      */
     public static void main(String[] args) {
         // Initialise default values if no args are given
@@ -330,6 +332,7 @@ public class MetaPopulation {
         //and a stochastic juvenile survival based on no correlation.
         boolean initialised = false;
         if (args.length == 0) {
+            seed = 420;
             tMax = 1000;
             iterations = 500;
             burnIn = 10;
@@ -340,6 +343,7 @@ public class MetaPopulation {
             nestsize = 3;
             reprAge = 2;
             reprProb = 0.5;
+            indivPha = 5;
             survival = new double[3];
             survival[0] = 1;
             survival[1] = 0.5;
@@ -358,6 +362,7 @@ public class MetaPopulation {
                 File file = new File(args[0]);
                 try {
                     Scanner read = new Scanner(file);
+                    seed = read.nextInt();
                     tMax = read.nextInt();
                     iterations = read.nextInt();
                     burnIn = read.nextInt();
@@ -369,6 +374,7 @@ public class MetaPopulation {
                     nestsize = read.nextInt();
                     reprAge = read.nextInt();
                     maxAge = read.nextInt();
+                    indivPha = read.nextInt();
                     reprProb = read.nextDouble();
                     String surv = read.next();
                     String[] survs = surv.split(";");
@@ -406,44 +412,46 @@ public class MetaPopulation {
                 }
             } else {
                 System.out.println("Please enter the name of a .txt file with all the required information in the following order:");
-                System.out.println("tMax(int) nIterations(int) burnInTime(int) oneLoop(T/F) extinctionLoop(T/F) quasiExtinctionBound(int) nestsize(int) reproductiveAge(int) maximumAge(int) reproductiveProb(double) survivalProb(double;double;...;double) initialAgeDistr(int;int;...;int) patchAreaInput(Strings) migrationInput(String) stochasticityInput(String) output1(String) output2(String)");
+                System.out.println("seed (int) tMax(int) nIterations(int) burnInTime(int) oneLoop(T/F) extinctionLoop(T/F) quasiExtinctionBound(int) nestsize(int) reproductiveAge(int) maximumAge(int) maxIndivPerHa(int) reproductiveProb(double) survivalProb(double;double;...;double) initialAgeDistr(int;int;...;int) patchAreaInput(Strings) migrationInput(String) stochasticityInput(String) output1(String) output2(String)");
                 System.out.println("The last five Strings should be names of .txt files, the outputnames are optional");
             }
         }
-        if(args.length >= 15 && args.length <= 17){
-            tMax = Integer.decode(args[0]);
-            iterations = Integer.decode(args[1]);
-            burnIn = Integer.decode(args[2]);
-            oneLoop = (args[3].equals("T")||args[3].equalsIgnoreCase("TRUE"));
-            extinctionLoop = (args[4].equals("T")||args[4].equalsIgnoreCase("TRUE"));
-            quasiExtinction = Integer.decode(args[5]);
-            nestsize = Integer.decode(args[6]);
-            reprAge = Integer.decode(args[7]);
-            maxAge = Integer.decode(args[8]);
-            reprProb = Double.parseDouble(args[9]);
-            String[] survs = args[10].split(";");
+        if(args.length >= 17 && args.length <= 19){
+            seed = Integer.decode(args[0]);
+            tMax = Integer.decode(args[1]);
+            iterations = Integer.decode(args[2]);
+            burnIn = Integer.decode(args[3]);
+            oneLoop = (args[4].equals("T")||args[4].equalsIgnoreCase("TRUE"));
+            extinctionLoop = (args[5].equals("T")||args[5].equalsIgnoreCase("TRUE"));
+            quasiExtinction = Integer.decode(args[6]);
+            nestsize = Integer.decode(args[7]);
+            reprAge = Integer.decode(args[8]);
+            maxAge = Integer.decode(args[9]);
+            indivPha = Integer.decode(args[10]);
+            reprProb = Double.parseDouble(args[11]);
+            String[] survs = args[12].split(";");
             stages = survs.length;
             survival = new double[stages + 1];
             survival[0] = 1;
             for (int i = 1; i <= stages; i++) {
                 survival[i] = Double.parseDouble(survs[i - 1]);
             }
-            String[] ages = args[11].split(";");
+            String[] ages = args[13].split(";");
             initialAge = new int[ages.length + 1];
             initialAge[0] = 0;
             for (int i = 1; i <= ages.length; i++) {
                 initialAge[i] = Integer.decode(ages[i - 1]);
             }
-            patchAreaInput = args[12];
-            migrationInput = args[13];
-            stochInput = args[14];
-            if (args.length==16) {
-                populationOutput = args[15];
+            patchAreaInput = args[14];
+            migrationInput = args[15];
+            stochInput = args[16];
+            if (args.length==18) {
+                populationOutput = args[17];
                 extinctionOutput = "ExtinctionTimes.txt";
             } else {
-                if (args.length==17) {
-                    populationOutput = args[15];
-                    extinctionOutput = args[16];
+                if (args.length==19) {
+                    populationOutput = args[17];
+                    extinctionOutput = args[18];
                 } else {
                     populationOutput = "Evolution.txt";
                     extinctionOutput = "ExtinctionTimes.txt";
@@ -535,7 +543,7 @@ public class MetaPopulation {
             System.out.println("Allowed input:");
             System.out.println("1. No input --> Default example");
             System.out.println("2. One name of a .txt file containing the same info as in 3.");
-            System.out.println("3. tMax(int) burnInTime(int) oneLoop(T/F) extinctionLoop(T/F) nestsize(int) reproductiveAge(int) maximutAge(int) reproductiveProb(double) survivalProb(double;double;...;double) initialAgeDistr(int;int;...;int) patchAreaInput(Strings) migrationInput(String) stochasticityInput(String) output1(String) output2(String)");
+            System.out.println("3. seed (int) tMax(int) burnInTime(int) oneLoop(T/F) extinctionLoop(T/F) nestsize(int) reproductiveAge(int) maximutAge(int) maxIndivPerHa(int) reproductiveProb(double) survivalProb(double;double;...;double) initialAgeDistr(int;int;...;int) patchAreaInput(Strings) migrationInput(String) stochasticityInput(String) output1(String) output2(String)");
         }
     }
 
