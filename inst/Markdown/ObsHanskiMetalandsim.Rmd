@@ -24,5 +24,55 @@ library(RMark)
 df.pop <- read.csv2("c:/temp/output.txt", sep = ",")
 str(df.pop)
 summary(df.pop)
+
+nTimeStep <- dplyr::n_distinct(df.pop$timestep)
+
+```
+
+# Properties and parameters of the population
+
+Number of patches:  `r dplyr::n_distinct(df.pop$patch)`
+
+Number of timesteps: `r nTimeStep`
+
+Number of unique individuals:  `r dplyr::n_distinct(df.pop$ID)`
+
+
+# Simple presence/absence observation process
+
+Assumptions:
+
+* ...
+
+```{r}
+p <- 0.5  # Detection probability
+
+v.Obs <- seq(20, 50, 5)  # Observation time steps
+
+```
+
+Parameters:
+
+- detection probability `r p`
+
+- Presence / absencce detection `
+
+```{r}
+
+df.ObsFlat <- data.frame()
+
+for (i in v.Obs) {
+  
+  df.Obs <- df.pop %>%
+    dplyr::filter(timestep == i, age > 1) %>%
+    dplyr::sample_frac(p, replace = FALSE) %>%
+    dplyr::select(patch, timestep) %>%
+    dplyr::count(patch) %>%
+    cbind(i)
+
+  df.ObsFlat <- rbind(df.ObsFlat, df.Obs)
+}
+
+
 ```
 

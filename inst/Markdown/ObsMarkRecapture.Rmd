@@ -81,7 +81,7 @@ df.EncHist <- df.EncHistFlat %>%
   
 df.EncHist
 
-CJS.Phidot.pdot <- mark(data = df.EncHist, threads=1)
+CJS.Phidot.pdot <- mark(data = df.EncHist)
 
 
 ```

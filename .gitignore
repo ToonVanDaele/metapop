@@ -6,7 +6,7 @@
 *.pdf
 *.csv
 *.emf
-*.class
+.class
 .html
 inst/java/MetaPopulation/nbproject/private/
 inst/java/MetaPopulation/build/
