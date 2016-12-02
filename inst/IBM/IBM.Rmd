@@ -21,43 +21,45 @@ path = "~/NetBeansProjects/"
 
 In deze R-code pas je de populatie-parameters aan indien nodig.
 ```{r populatieparameters}
-seed = 100
-tmax = 1000
-burnin.time = 15
-nPop = 6
-nStages = 2
+seed = 420                        #Een seed voor random number generators
+tmax = 1000                       #Total number of timesteps
+nIters = 200                      #Total number of iterations of a whole loop
+burnin.time = 15                  #Amount of time the population evolves before information is measured
+nPop = 6                          #Number of populations
+indiv.per.ha = 5                  #Amount of individuals that can live on 1 ha
+nStages = 2                       #Amount of stages
 stages.names = c("Juvenile","Adult")
-maxAge = 20
-quasiExtinctionBound = 10
-initial.agedistr = c(0,5)
-survivalChance = c(0.5,0.8)
-survivalVar = c(0.05,0)
-reproductiveChance = 0.5
-reproductiveVar = 0
-reproductive.age = 2
-nOffspring = 4
-stochasticity = c(T,F,F)
-correlation = T
-correlation.onlyStoch = T
+maxAge = 20                       #Maximum age an individual can reach
+quasiExtinctionBound = 10         #Below this bound (on total population) the population is seen a extinct
+initial.agedistr = c(0,5)         #Age ditribution for the initial population
+survivalChance = c(0.5,0.8)       #Survival chances for each stage
+survivalVar = c(0.05,0)           #Variance of the survival chances
+reproductiveChance = 0.5          #Probability that an idividual reproduces
+reproductiveVar = 0               #Variance on reproductive probability
+reproductive.age = 2              #Age/Stagenumber at which an individual can reproduce
+nOffspring = 3                    # Mean nestsize (will be Poisson ditributed)
+stochasticity = c(T,F,F)          #For which probabilities should stochastic values be calculated (survivalchances,reproduction)?
+correlation = FALSE               #Should the parameters be correlated?      
+correlation.onlyStoch = FALSE     #Should only the stochastic parameters be correlated or all parameters?
 ```
 In dit stuk R-code kan je enkele parameters aanpassen die invloed hebben op de patches
 ```{r patchparameters}
-mapsize = 1000
-dist_min = 200
-area_M = 2.5
-area_SD = 0.8
-disp = 500
-plotPatch = T
-stay = 100
+mapsize = 1000    #Total size of the area in which the patches are created
+dist_min = 200    #Minimum distance between the centre of two patches
+area_M = 2.5      #Mean area of the patches
+area_SD = 0.8     #Standard deviance of the patch areas
+disp = 500        #Mean distance over which individuals are able to disperse
+plotPatch = TRUE  #Should the patch configuration be plotted?
+stay = 100        #If this number is small the individuals have a small migration probability
 ```
 
 Hier kan je namen van files aanpassen waaring tussentijdse of finale informatie zal opgeslagen worden.
 ```{r filenamen}
-  output.patch = "patches.txt"
-  output.migration = "dispersion.txt"
-  output.stoch = "stochSurvival.txt"
-  output.population.evolution = "Evolution.txt"
-  output.population.extinction = "ExtinctionTimes.txt"
+  output.patch = "patches.txt"                          #Where the patch info will be written to
+  output.migration = "dispersion.txt"                   #Where the dispersion matrix will be written to
+  output.stoch = "stochSurvival.txt"                    #Where the stochastic parameters will be written to
+  output.population.evolution = "Evolution.txt"         #Where the results of a loop will be written to
+  output.population.extinction = "ExtinctionTimes.txt"  #Where the extinction times will be written to
 ```
 
 Geef hier aan wat voor run moet gebeuren: 1 run van `r tmax` tijdsstappen of 500 runs van `r tmax` tijdsstappen zodat ook extinctiekansen kunnen berekend worden.
@@ -99,7 +101,7 @@ pathString <- paste0(path,"MetaPopulation/inst/java/MetaPopulation/src/metapopul
 system(paste("cp",pathString, getwd()))
 system("javac -cp jdistlib-0.4.4-bin.jar *.java -d classes")
 tmpfile = tempfile()
-command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", tmax, burnin.time, oneLoop, extinctionLoop, quasiExtinctionBound, nOffspring, reproductive.age, maxAge, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr), output.patch, output.migration, output.stoch, output.population.evolution, output.population.extinction,">",tmpfile)
+command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation",seed, tmax, nIters, burnin.time, oneLoop, extinctionLoop, quasiExtinctionBound, nOffspring, reproductive.age, maxAge, indiv.per.ha, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr), output.patch, output.migration, output.stoch, output.population.evolution, output.population.extinction,">",tmpfile)
 system(command)
 command
 cc<-t(as.vector(read.table(tmpfile,header=FALSE)))
@@ -107,13 +109,29 @@ cc<-t(as.vector(read.table(tmpfile,header=FALSE)))
 
 #### Genereer wat output om resultaten te onderzoeken
 
-```{r Output, fig.width=10, fig.height=6}
+```{r Output, fig.width=10, fig.height=6, eval=TRUE}
 source(paste0(path,"MetaPopulation/R/ibm_output.R"))
 if(oneLoop){
   EvolutionOutput(tmax=tmax, nPop=nPop, java.out = output.population.evolution, carying.cap = cc)
 }
 if(extinctionLoop){
   EvolutionOutput(tmax=tmax, nPop=nPop, java.out = output.population.evolution, oneLoop = F, carying.cap = cc)
-  ExtinctionOutput(tmax = tmax, java.out = output.population.extinction)
+  ExtinctionOutput(nrep = nIters, tmax = tmax, java.out = output.population.extinction)
 }
+```
+
+```{r Comparison, eval=FALSE}
+source(paste0(path,"MetaPopulation/R/ibm_output.R"))
+  extinctionLoop = TRUE
+correlation = F
+  command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", seed, tmax, nIters, burnin.time, oneLoop, extinctionLoop, quasiExtinctionBound, nOffspring, reproductive.age, maxAge, indiv.per.ha, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr), output.patch, output.migration, output.stoch, output.population.evolution, output.population.extinction,">",tmpfile)
+system(command)
+cc<-t(as.vector(read.table(tmpfile,header=FALSE)))
+ExtinctionOutput(nrep = nIters, tmax=tmax, java.out = output.population.extinction)
+correlation = T 
+correlation.onlyStoch = T
+  command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", seed, tmax, nIters, burnin.time, oneLoop, extinctionLoop, quasiExtinctionBound, nOffspring, reproductive.age, maxAge, indiv.per.ha, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr), output.patch, output.migration, output.stoch, output.population.evolution, output.population.extinction,">",tmpfile)
+system(command)
+ExtinctionOutput(nrep = nIters, tmax=tmax, java.out=output.population.extinction, lines=TRUE)
+legend("topleft",legend = c("No correlation","Correlation"),col = 1:2, fill = 1:2)
 ```
