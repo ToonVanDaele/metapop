@@ -58,7 +58,6 @@ Parameters:
 - Presence / absencce detection `
 
 ```{r}
-
 df.ObsFlat <- data.frame()
 
 for (i in v.Obs) {
@@ -83,7 +82,10 @@ df.Obs <- df.ObsFlat %>%
  data(occ.landscape) 
  
  str(occ.landscape)
-parameter.estimate(sp, method, alpha = NULL, nsnap)
+parameter.estimate(sp = occ.landscape,
+                   method = "Rsnap_1",
+                   alpha = FALSE,
+                   nsnap = 1)
 
 
 ```
