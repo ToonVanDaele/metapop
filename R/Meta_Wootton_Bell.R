@@ -1,3 +1,6 @@
+# Wootton & Bell  -> Dit is volledig omget in Markdown (script met dezelfde naam)
+# Nog even nakijken en dan mag dit bestand verwijderd.
+
 library(popbio)
 library(Rramas)
 

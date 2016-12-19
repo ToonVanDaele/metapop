@@ -1,3 +1,5 @@
+# pop projection for wootton & bell
+
 pop.projection.WB <- function(A1,A2,cap,n0,iterations=20){
   x <- length(n0)
   t <- iterations
