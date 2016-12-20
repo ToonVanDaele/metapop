@@ -14,10 +14,6 @@ library(ggplot2)
 Dit script voegt een aantal R-scripts, R-functies en ook een Java methode samen om zo vanuit de input van een aantal parameters als output het gedrag van een metapopulatie te simuleren.
 
 #### Input
-Geef hier de pathway in naar de overkoepelende MetaPopulation map.
-```{r Path}
-path = "~/NetBeansProjects/"
-```
 
 In deze R-code pas je de populatie-parameters aan indien nodig.
 ```{r populatieparameters}
@@ -72,14 +68,17 @@ extinctionLoop <- T
 
 #### Input genereren
 Dit script genereert patches, de migratiekansen en stochastische waarden voor de survival- en reproductieparameters indien nodig.
+
 ```{r genereer input, message=FALSE, warning=FALSE}
-source(paste0(path,"MetaPopulation/R/ibm_input.R"))
+source("../../R/ibm_input.R")
+
 outputPatch(seed = seed, mapsize = mapsize, dist_min = dist_min, areaM = area_M, areaSD = area_SD,
             Npatch = nPop, disp = disp, plotG = plotPatch, stay = stay, output.patch = output.patch,
             output.migration = output.migration)
 if (correlation.onlyStoch) {
   corrMat = corrMatrix(npar = length(survivalChance) + 1 , npop = nPop, correlation = correlation, stochasticity = stochasticity)
-}else{
+
+  }else{
   corrMat = corrMatrix(npar = length(survivalChance) + 1 , npop = nPop, correlation = correlation)
 }
 stochMatrix(seed = seed, tmax = tmax, Npop = nPop, stages = nStages, stages.names = stages.names,
@@ -102,17 +101,35 @@ vector.to.String <- function(v, sep=";"){
 ```
 
 ```{r RunJava}
-pathString <- paste0(path,"MetaPopulation/inst/java/MetaPopulation/src/metapopulation/*.java")
-system(paste("cp",pathString, getwd()))
-system("javac -cp jdistlib-0.4.4-bin.jar *.java -d classes")
+getwd()
+setwd("../java/MetaPopulation")
+system("javac -cp lib/jdistlib-0.4.4-bin.jar src/metapopulation/*.java -d build")
+
 tmpfile = tempfile()
-command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation",seed, tmax, nIters,
-                 burnin.time, oneLoop, extinctionLoop, quasiExtinctionBound, nOffspring, reproductive.age, maxAge,
-                 indiv.per.ha, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr),
-                 output.patch, output.migration, output.stoch, output.population.evolution,
-                 output.population.extinction, ">", tmpfile)
-system(command)
+
+# Default argument
+command <- paste("java -cp bin;lib/jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation")
 command
+system(command)
+
+# Textfile with arguments
+command <- paste("java -cp bin;lib/jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation",
+                 "input.txt", 
+                 ">", tmpfile)
+command
+system(command)
+
+# Full argument list
+command <- paste("java -cp bin;lib/jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", 
+                 seed, tmax, nIters, burnin.time, oneLoop, extinctionLoop,
+                 quasiExtinctionBound, nOffspring, reproductive.age, maxAge,
+                 indiv.per.ha, reproductiveChance, vector.to.String(survivalChance),
+                 vector.to.String(initial.agedistr), output.patch, output.migration,
+                 output.stoch, output.population.evolution, output.population.extinction,
+                 ">", tmpfile)
+command
+system(command)
+
 cc <- t(as.vector(read.table(tmpfile, header = FALSE)))
 ```
 
@@ -142,8 +159,10 @@ system(command)
 cc<-t(as.vector(read.table(tmpfile, header = FALSE)))
 ExtinctionOutput(nrep = nIters, tmax=tmax, java.out = output.population.extinction)
 correlation = T 
+
 correlation.onlyStoch = T
-  command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", seed, tmax, nIters,
+
+command <- paste("java -cp .:classes:jdistlib-0.4.4-bin.jar metapopulation.MetaPopulation", seed, tmax, nIters,
                    burnin.time, oneLoop, extinctionLoop, quasiExtinctionBound, nOffspring, reproductive.age, maxAge,
                    indiv.per.ha, reproductiveChance, vector.to.String(survivalChance), vector.to.String(initial.agedistr),
                    output.patch, output.migration, output.stoch, output.population.evolution,
@@ -152,3 +171,4 @@ system(command)
 ExtinctionOutput(nrep = nIters, tmax=tmax, java.out=output.population.extinction, lines=TRUE)
 legend("topleft",legend = c("No correlation","Correlation"),col = 1:2, fill = 1:2)
 ```
+
